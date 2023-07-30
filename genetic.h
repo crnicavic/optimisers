@@ -24,7 +24,7 @@ Copyright (C) 2023
 #include <float.h>
 #include <limits.h>
 
-
+#define _POSIX_C_SOURCE 200809L
 #define TRUE 1
 #define FALSE 0
 #define FAIL -1
