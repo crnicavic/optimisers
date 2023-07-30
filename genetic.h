@@ -35,9 +35,6 @@ typedef enum selection
     TOURNAMENT
 }selection;
 
-static int greater(float a, float b);
-static int lesser(float a, float b);
-
 /* TODO: Make an array of ranges */
 typedef struct gaconf{
     float min;      /* the minimum if the range */
@@ -47,26 +44,44 @@ typedef struct gaconf{
     int tour_size;  /* the size of the n/2 tournament */
     float mut_rate; /* probability of mutation from 0 to 1 */
     int elitis;     /* count of units to conserve to elitis */
-    float tol;
-    int gens;
+    int gens;       /* generation count */
     int find_max;   /* 0 if looking for maximum */
     int sel_alg;    /* selection algorithm */
 }gaconf;
 
+static void generate_initial_pop(float min, float max, int dims, int size);
+static void print_pop(float **p);
+static void calculate_costs(float **p, float *c, float(*f)(float*));
+static void print_costs(float *c);
+static int greater(float a, float b);
+static int lesser(float a, float b);
+int quicksort_partition(float **p, float *c, int start, int stop);
+void quicksort_pop(float **p, float *c, int start, int stop);
+static void tournament(int participant_count);
+static float prob_max(float cost);
+static float prob_min(float cost);
+static void roulette(int find_max);
+static void crossover_sym();
+static void mutation(float mut_rate);
+static void elitism(int elitis);
+static int ga_init(gaconf *ga);
+static float* ga(gaconf* ga, float (*func)(float*));
+
+gaconf def = {-10, 10, 2, 30, 5, 0.3, 2, 30, FALSE, ROULETTE};
 
 int DIMS = 0;
 int SIZE = 0;
 int MINIMUM = 0;
 
-int (*compare[2]) (float a, float b);
-void (*sel[2]) (int par);
-float (*prob[2]) (float cost);
+int (*compare[2]) (float a, float b) = {greater, lesser} ;
+void (*sel[2]) (int par) = {roulette, tournament};
+float (*prob[2]) (float cost) = {prob_min, prob_max};
 
 static float **pop;
 static float *costs;
 static float **new_pop;
 static float *new_costs;
-
+float *probs;
 int *participants;
 
 static int **pairs;
@@ -97,42 +112,14 @@ generate_initial_pop(float min, float max, int dims, int size)
 }
 
 
-static void 
-print_pop(float** p)
-{
-    int row = 0, col = 0;
-    if (p == NULL || DIMS == 0 || SIZE ==0){
-        printf("Can't print empty stuff!\n");
-    }
-    printf("Population:\n");
-    
-    for (; row < SIZE; row++) {
-        for (col = 0; col < DIMS; col++) {
-            printf ("%.2f ", p[row][col]);
-        }
-        printf("\n");
-    }
-}
-
-
 static void
-calculate_costs(float** p, float* c, float(*f)(float*))
+calculate_costs(float **p, float *c, float(*f)(float*))
 {
     int it = 0;
     
     for(; it < SIZE; it++) {
         c[it] = f(p[it]);
     }
-}
-
-
-static void
-print_costs(float* c)
-{
-    for (int it = 0; it < SIZE; it++){
-        printf("%.2f ", c[it]);
-    }
-    printf("\n");
 }
 
 
@@ -152,7 +139,7 @@ lesser(float a, float b)
 
 /* c - costs, p - it's respective population */
 int
-quicksort_partition(float** p, float* c, int start, int stop)
+quicksort_partition(float **p, float *c, int start, int stop)
 {
     /* pivot is practically the place where the pivot element will go */
     int pivot = start;
@@ -186,7 +173,7 @@ quicksort_partition(float** p, float* c, int start, int stop)
 
 /* it's called quicksort but it sure as shit wont be quick */
 void
-quicksort_pop(float** p, float* c, int start, int stop)
+quicksort_pop(float **p, float *c, int start, int stop)
 {
     int pivot; 
     if (start < stop) {
@@ -252,9 +239,7 @@ roulette(int find_max)
     int row = 0, col = 0;
     int pair = 0;
     int parent = -1;
-    /* TODO: REMOVE THIS MALLOC */
     /* array that holds each probability */
-    float* probs = (float*) malloc(sizeof(float) * SIZE);
     
     float prob_sum = 0;
 
@@ -278,7 +263,6 @@ roulette(int find_max)
             pairs[pair][col] = parent;
         }
     }
-    free(probs);
 }
 
 
@@ -342,7 +326,7 @@ elitism(int elitis)
 
 /* dumb function that calls a bunch of mallocs */
 static int
-ga_init(gaconf* ga)
+ga_init(gaconf *ga)
 {
     int pair = 0, it = 0;
  
@@ -351,7 +335,7 @@ ga_init(gaconf* ga)
     MINIMUM = ga->find_max;
 
 
-    costs = (float*)malloc(sizeof(float) * SIZE);
+    costs = (float*) malloc(sizeof(float) * SIZE);
     if (costs == NULL) {
         printf("Memory allocation failed! [costs]\n");
         return FAIL;
@@ -390,11 +374,18 @@ ga_init(gaconf* ga)
         printf("Memory allocation failed! [new_costs]\n");
         return FAIL;
     }
-
-    participants = (int*) malloc(sizeof(int) * ga->tour_size);
-    if (participants == NULL) {
-        printf("Memory allocation failed! [participants]\n");
-        return FAIL;
+    if (ga->sel_alg == ROULETTE) {
+        probs = (float*) malloc(sizeof(float) * SIZE);
+        if (probs == NULL) {
+            printf("Memory allocation failed! [probs]\n");
+            return FAIL;
+        }
+    } else {
+        participants = (int*) malloc(sizeof(int) * ga->tour_size);
+        if (participants == NULL) {
+            printf("Memory allocation failed! [participants]\n");
+            return FAIL;
+        }
     }
     return 0;
 
@@ -406,31 +397,15 @@ ga(gaconf* ga, float (*func)(float*))
 {
     float **temp_pop;
     float *temp_costs;
+    float prev_best = FLT_MAX;
+    ga = ga == NULL ? &def : ga;
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
     generate_initial_pop(ga->min, ga->max, ga->dims, ga->size);
-
-    compare[TRUE] = lesser;
-    compare[FALSE] = greater;
-
-    sel[ROULETTE] = roulette;
-    sel[TOURNAMENT] = tournament;
-
-    prob[TRUE] = prob_max;
-    prob[FALSE] = prob_min;
-
-    if (ga_init(ga) < 0) {
-        printf("GA INIT FAILED!\n");
-        return NULL;
-    }
+    
 
     calculate_costs(pop, costs, func);
     quicksort_pop(pop, costs, 0, SIZE-1);
 
-    printf("%.10f: ", costs[0]); 
-    for (int i = 0; i < ga->dims; i++) {
-        printf("%.2f ", pop[0][i]);
-    }
-    puts("");
     for (int it = 0; it < ga->gens; it++) {
         
         sel[ga->sel_alg](sel_parameter);
@@ -451,13 +426,8 @@ ga(gaconf* ga, float (*func)(float*))
         temp_costs = costs;
         costs = new_costs;
         new_costs = temp_costs;
-
-        printf("Best: %.10f: ", costs[0]); 
-        for (int i = 0; i < ga->dims; i++) {
-            printf("%.2f ", pop[0][i]);
-        }
-        puts("");
     }
+    
     return pop[0];
 }
 
