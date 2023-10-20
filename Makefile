@@ -1,11 +1,10 @@
 CC = gcc 
 
-TARGETS = *.h *.c
+TARGETS = *.c
 
-LINKER_FLAGS = -lm -g -o
+LINKER_FLAGS = -g -o
 
 OBJECT = ga
 
 all: $(TARGETS)
-	$(CC) $(TARGETS) $(LINKER_FLAGS) $(OBJECT)
-	rm genetic.h.gch
+	$(CC) $(TARGETS) $(LINKER_FLAGS) $(OBJECT) 

@@ -15,7 +15,6 @@ Copyright (C) 2023
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 */
 
 #include <stdlib.h>
@@ -23,6 +22,25 @@ Copyright (C) 2023
 #include <time.h>
 #include <float.h>
 #include <limits.h>
+
+#define MALLOC_FAIL(str) "%s allocation failed!\n", #str
+
+/* e - inverted error condition, f - flag to be returned(not exit) */
+#define ASSERT(_e, f, ...)  if (!(_e)) { \
+                                fprintf(stderr, __VA_ARGS__); \
+                                return f; \
+                            }
+/* v- variable(name) s-size t-type */
+#define ARRAY(v, s, t) v = (t*) malloc(sizeof(t) * s); \
+                        ASSERT(v != NULL, FAIL, MALLOC_FAIL(v))
+/* v- variable(name) r-rows c-cols t-type */
+#define MATRIX(v, r, c, t)  v = (t**) malloc(sizeof(t*) * r); \
+                            ASSERT(v != NULL, FAIL, MALLOC_FAIL(v)); \
+                            rr=0; \
+                            for(;rr < r; ++rr) { \
+                                v[rr] = (t*) malloc(sizeof(t) * c); \
+                                ASSERT(v[rr] != NULL, FAIL, MALLOC_FAIL(v)); \
+                            }
 
 #define _POSIX_C_SOURCE 200809L
 #define TRUE 1
@@ -49,10 +67,10 @@ typedef struct gaconf{
     int sel_alg;    /* selection algorithm */
 }gaconf;
 
+static int create_matrix(int rows, int cols);
+static int create_array(int size);
 static void generate_initial_pop(float min, float max, int dims, int size);
-static void print_pop(float **p);
 static void calculate_costs(float **p, float *c, float(*f)(float*));
-static void print_costs(float *c);
 static int greater(float a, float b);
 static int lesser(float a, float b);
 int quicksort_partition(float **p, float *c, int start, int stop);
@@ -67,7 +85,7 @@ static void elitism(int elitis);
 static int ga_init(gaconf *ga);
 static float* ga(gaconf* ga, float (*func)(float*));
 
-gaconf def = {-10, 10, 2, 30, 5, 0.3, 2, 30, FALSE, ROULETTE};
+gaconf def = {-10, 10, 2, 30, 5, 0.3, 2, 30, FALSE, TOURNAMENT};
 
 int DIMS = 0;
 int SIZE = 0;
@@ -83,28 +101,17 @@ static float **new_pop;
 static float *new_costs;
 float *probs;
 int *participants;
-
 static int **pairs;
+int rr;
 
 static void 
 generate_initial_pop(float min, float max, int dims, int size)
 {
-    srand48(time(NULL));
     int row = 0, col = 0;
 
-    pop = (float**) malloc(sizeof(int*) * size);
-    if (pop == NULL) {
-        printf("Memory allocation failed!\n");
-        return;
-    }
 
-    for (row = 0; row < size; row++){
-        pop[row] = (float*) malloc(sizeof(int) * dims);
-        if (pop[row] == NULL) {
-            printf("Memory allocation failed!\n");
-            return;
-        }
-
+    for (; row < size; row++){
+        col = 0;
         for (col = 0; col < dims; col++){
             pop[row][col] = (drand48() * (max - min)) + min;
         }
@@ -123,7 +130,7 @@ calculate_costs(float **p, float *c, float(*f)(float*))
 }
 
 
-static int
+static int 
 greater(float a, float b)
 {
     return a > b;
@@ -141,12 +148,11 @@ lesser(float a, float b)
 int
 quicksort_partition(float **p, float *c, int start, int stop)
 {
-    /* pivot is practically the place where the pivot element will go */
     int pivot = start;
-    int it;
+    int it = start;
     float temp_cost;
     float* temp_chr;
-    for (int it = start; it < stop; it++) {
+    for (; it < stop; it++) {
         if (compare[MINIMUM](c[stop], c[it])) {
             temp_cost = c[it];
             c[it] = c[pivot];
@@ -190,16 +196,10 @@ tournament(int participant_count)
     int pair = 0, it = 0;
     int winners[2] = {INT_MAX, INT_MAX};
 
-    if (participants == NULL) {
-        printf("Participants memory allocation failed!\n");
-        return;
-    }
-
-    srand48(time(NULL));
-
-    for (pair = 0; pair < SIZE/2; pair++) {
+    for (; pair < SIZE/2; pair++) {
         participants[0] = drand48() * SIZE;
-        for (it = 1; it < participant_count; it++) { 
+        it=1;
+        for (; it < participant_count; it++) { 
             participants[it] = drand48() * SIZE;
              
             while (participants[it] == participants[it-1]) {
@@ -245,14 +245,13 @@ roulette(int find_max)
 
     float range = costs[SIZE-1] - costs[0];
 
-    srand48(time(NULL));
-
-    for (row=0; row < SIZE; row++){
+    for (; row < SIZE; row++){
         probs[row] = prob[find_max](costs[row]); 
     }
 
-    for (pair = 0; pair < SIZE/2; pair++) {
-        for (col = 0; col < 2; col++) {
+    for (; pair < SIZE/2; pair++) {
+        col = 0;
+        for (; col < 2; col++) {
             prob_sum = 0;
             temp = drand48();
             parent = 0;
@@ -276,14 +275,15 @@ crossover_sym()
     while (row < SIZE) {
         r = (float) drand48();
 
-        for ( col = 0; col < DIMS; col++) {
+        for (; col < DIMS; col++) {
             new_pop[row][col] = r * pop[pairs[pair][0]][col];
             new_pop[row][col] += (1-r) * pop[pairs[pair][1]][col];
         }
-
+        
+        col = 0;
         row++;
 
-        for ( col = 0; col < DIMS; col++) {
+        for (; col < DIMS; col++) {
             new_pop[row][col] = (1-r) * pop[pairs[pair][0]][col]; 
             new_pop[row][col] =+ r * pop[pairs[pair][1]][col];
         }
@@ -299,8 +299,9 @@ mutation(float mut_rate)
 {
     float r;
     int row = 0, col = 0;
-    for (row = 0; row < SIZE; row++) {
-        for (col = 0; col < DIMS; col++) {  
+    for (; row < SIZE; row++) {
+        col = 0;
+        for (; col < DIMS; col++) {  
             if (drand48() < mut_rate) {
                 r = drand48() * 2;
                 new_pop[row][col] += r - 1;
@@ -315,8 +316,9 @@ elitism(int elitis)
 {
     int it = 0;
     int col = 0;
-    for (it = 0; it < elitis; it++){
-        for (col = 0; col < DIMS; col++) {
+    for (; it < elitis; it++){
+        col = 0;
+        for (; col < DIMS; col++) {
             new_pop[SIZE-1-it][col] = pop[it][col];
         }
         new_costs[SIZE-1-it] = costs[it];
@@ -334,58 +336,16 @@ ga_init(gaconf *ga)
     DIMS = ga->dims;
     MINIMUM = ga->find_max;
 
-
-    costs = (float*) malloc(sizeof(float) * SIZE);
-    if (costs == NULL) {
-        printf("Memory allocation failed! [costs]\n");
-        return FAIL;
-    }
+    MATRIX(pop, SIZE, DIMS, float)
+    MATRIX(pairs, SIZE/2, 2, int)
+    MATRIX(new_pop, SIZE, DIMS, float)
+    ARRAY(costs, SIZE, float)
+    ARRAY(new_costs, SIZE, float)
     
-    pairs = (int**) malloc(sizeof(int*) * SIZE/2);
-    if (pairs == NULL) {
-        printf("Memory allocation failed! [pairs]\n");
-        return FAIL;
-    }
-
-    for ( pair = 0; pair < SIZE/2 ; pair++){
-        pairs[pair] = (int*) malloc(sizeof(int) * 2);
-        if (pairs[pair] == NULL) {
-            printf("Memory allocation failed! [pairs]\n");
-            return FAIL;
-        }
-    }
-
-    new_pop = (float**) malloc(sizeof(float*) * SIZE);
-    if (new_pop == NULL) {
-        printf("Memory allocation failed! [new_pop]\n");
-        return FAIL;
-    }
-
-    for (it = 0; it < SIZE; it++) {
-        new_pop[it] = (float*) malloc(sizeof(float) * DIMS);
-        if (new_pop[it] == NULL) {
-            printf("Memory allocation failed! [new_pop]\n");
-            return FAIL;
-        }
-    }
-
-    new_costs = (float*) malloc(sizeof(float) * SIZE);
-    if (new_costs == NULL) {
-        printf("Memory allocation failed! [new_costs]\n");
-        return FAIL;
-    }
     if (ga->sel_alg == ROULETTE) {
-        probs = (float*) malloc(sizeof(float) * SIZE);
-        if (probs == NULL) {
-            printf("Memory allocation failed! [probs]\n");
-            return FAIL;
-        }
+        ARRAY(probs, SIZE, float)
     } else {
-        participants = (int*) malloc(sizeof(int) * ga->tour_size);
-        if (participants == NULL) {
-            printf("Memory allocation failed! [participants]\n");
-            return FAIL;
-        }
+        ARRAY(participants, ga->tour_size, int)
     }
     return 0;
 
@@ -400,8 +360,9 @@ ga(gaconf* ga, float (*func)(float*))
     float prev_best = FLT_MAX;
     ga = ga == NULL ? &def : ga;
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
+
+    srand48(time(NULL));
     generate_initial_pop(ga->min, ga->max, ga->dims, ga->size);
-    
 
     calculate_costs(pop, costs, func);
     quicksort_pop(pop, costs, 0, SIZE-1);
@@ -430,4 +391,3 @@ ga(gaconf* ga, float (*func)(float*))
     
     return pop[0];
 }
-
