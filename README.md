@@ -2,9 +2,6 @@
 
 Genetic algorithm i wrote for personal use in C.
 
-Written in suckless coding style.
-Used on GNU/Linux and OpenBSD.
-
 ```c
 genetic.h - the main file
 main.c and Makefile - if you wish to test it yourself
@@ -17,8 +14,7 @@ static float* ga(gaconf* ga, float (*func)(float*));
 where gaconf is defined as:
 ```c
 typedef struct gaconf{
-    float min;      /* the minimum if the range */
-    float max;      /* the maximum of the range */
+    float *ranges;  /* 
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
     int tour_size;  /* the size of the n/2 tournament */
@@ -30,5 +26,12 @@ typedef struct gaconf{
 }gaconf;
 ```
 or simply leave it null to use the defaults.
-If ga returns `NULL` there has been an error, otherwise, it returns the best solution as an array.
-
+If ga returns `NULL` there has been an error, otherwise,
+it returns the best solution as an array.
+`ranges` is an array with length `DIMENSIONS * 2` every first element
+is the minimum for a dimension, every second element is the maximum
+```c
+//easier way to create the ranges (works in C)
+conf.ranges = {{min_D1, max_D1}, {min_D2, max_D2}, ...
+```
+if `ranges` are set to `NULL`, the default interval is (-10, 10)
