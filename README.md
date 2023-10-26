@@ -25,11 +25,9 @@ typedef struct gaconf{
     int sel_alg;    /* selection algorithm */
 }gaconf;
 ```
-or simply leave it null to use the defaults.
-If ga returns `NULL` there has been an error, otherwise,
+or simply leave it `NULL` to use the defaults.
+If the `ga` function returns `NULL` there has been an error, otherwise,
 it returns the best solution as an array.
-`ranges` is an array with length `DIMENSIONS * 2` every first element
-is the minimum for a dimension, every second element is the maximum
 ```c
 //easier way to create the ranges (works in C)
 conf.ranges = {{min_D1, max_D1}, {min_D2, max_D2}, ...
