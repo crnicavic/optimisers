@@ -14,7 +14,7 @@ static float* ga(gaconf* ga, float (*func)(float*));
 where gaconf is defined as:
 ```c
 typedef struct gaconf{
-    float *ranges;  /* 
+    float *ranges;  /* range limit per dimension */ 
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
     int tour_size;  /* the size of the n/2 tournament */
