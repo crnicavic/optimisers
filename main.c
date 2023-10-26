@@ -9,11 +9,9 @@ float f2(float* x){
 extern gaconf def;
 
 int main(){
-    if (ga_init(&def) < 0) {
-        printf("GA INIT FAILED!\n");
-        return 1;
-    }
-    float* winner = ga(NULL, f2);
+    float test[2][2] = {{-1.0, 3.0}, {-2.0, 3.0}};
+    gaconf conf = {test, 2, 30, 5, 0.3, 2, 30, FALSE, TOURNAMENT};
+    float* winner = ga(&conf, f2);
     printf("Final: %.10f\n", f2(winner));
     return 0;
 }
