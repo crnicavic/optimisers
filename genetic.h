@@ -31,10 +31,10 @@ Copyright (C) 2023
                                 return f; \
                             }
 /* v- variable(name) s-size t-type */
-#define ARRAY(v, s, t) v = (t*) malloc(sizeof(t) * s); \
+#define ALLOC_ARRAY(v, s, t) v = (t*) malloc(sizeof(t) * s); \
                         ASSERT(v != NULL, FAIL, MALLOC_FAIL(v))
 /* v- variable(name) r-rows c-cols t-type */
-#define MATRIX(v, r, c, t)  v = (t**) malloc(sizeof(t*) * r); \
+#define ALLOC_MATRIX(v, r, c, t)  v = (t**) malloc(sizeof(t*) * r); \
                             ASSERT(v != NULL, FAIL, MALLOC_FAIL(v)); \
                             rr=0; \
                             for(;rr < r; ++rr) { \
@@ -55,8 +55,7 @@ typedef enum selection
 
 /* TODO: Make an array of ranges */
 typedef struct gaconf{
-    float min;      /* the minimum if the range */
-    float max;      /* the maximum of the range */
+    float *ranges; 
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
     int tour_size;  /* the size of the n/2 tournament */
@@ -69,7 +68,7 @@ typedef struct gaconf{
 
 static int create_matrix(int rows, int cols);
 static int create_array(int size);
-static void generate_initial_pop(float min, float max, int dims, int size);
+static void generate_initial_pop(float *ranges, int dims, int size);
 static void calculate_costs(float **p, float *c, float(*f)(float*));
 static int greater(float a, float b);
 static int lesser(float a, float b);
@@ -85,7 +84,7 @@ static void elitism(int elitis);
 static int ga_init(gaconf *ga);
 static float* ga(gaconf* ga, float (*func)(float*));
 
-gaconf def = {-10, 10, 2, 30, 5, 0.3, 2, 30, FALSE, TOURNAMENT};
+gaconf def = {NULL, 2, 30, 5, 0.3, 2, 30, FALSE, TOURNAMENT};
 
 int DIMS = 0;
 int SIZE = 0;
@@ -95,6 +94,7 @@ int (*compare[2]) (float a, float b) = {greater, lesser} ;
 void (*sel[2]) (int par) = {roulette, tournament};
 float (*prob[2]) (float cost) = {prob_min, prob_max};
 
+
 static float **pop;
 static float *costs;
 static float **new_pop;
@@ -102,18 +102,20 @@ static float *new_costs;
 float *probs;
 int *participants;
 static int **pairs;
+
 int rr;
 
 static void 
-generate_initial_pop(float min, float max, int dims, int size)
+generate_initial_pop(float *ranges, int dims, int size)
 {
     int row = 0, col = 0;
-
+    float range, min; 
 
     for (; row < size; row++){
         col = 0;
-        for (col = 0; col < dims; col++){
-            pop[row][col] = (drand48() * (max - min)) + min;
+        range = ranges[row * 2 + 1] + ranges[row * 2];
+        for (; col < dims; col++){
+            pop[row][col] = (drand48() * range) + ranges[row*2];
         }
     }
 }
@@ -189,7 +191,7 @@ quicksort_pop(float **p, float *c, int start, int stop)
     }
 }
 
-
+/* the population is sorted, comparing indices */
 static void
 tournament(int participant_count)
 {
@@ -206,7 +208,6 @@ tournament(int participant_count)
                 participants[it] = drand48() * SIZE;
             }
         
-            /* the costs are sorted, so i only need to compare indices */
             if (winners[0] > participants[it]){
                 winners[1] = winners[0];
                 winners[0] = participants[it];
@@ -239,7 +240,6 @@ roulette(int find_max)
     int row = 0, col = 0;
     int pair = 0;
     int parent = -1;
-    /* array that holds each probability */
     
     float prob_sum = 0;
 
@@ -336,16 +336,27 @@ ga_init(gaconf *ga)
     DIMS = ga->dims;
     MINIMUM = ga->find_max;
 
-    MATRIX(pop, SIZE, DIMS, float)
-    MATRIX(pairs, SIZE/2, 2, int)
-    MATRIX(new_pop, SIZE, DIMS, float)
-    ARRAY(costs, SIZE, float)
-    ARRAY(new_costs, SIZE, float)
+    ALLOC_MATRIX(pop, SIZE, DIMS, float)
+    ALLOC_MATRIX(pairs, SIZE/2, 2, int)
+    ALLOC_MATRIX(new_pop, SIZE, DIMS, float)
+
+    if(ga->ranges == NULL) {
+        ALLOC_ARRAY(ga->ranges, DIMS * 2, float);
+        it = 0;
+        for (; it < DIMS; it++){
+            ga->ranges[it * 2] = -10;
+            ga->ranges[it * 2 + 1] = 10;
+        }
+        printf("Warning: no ranges specified!\n setting as (-10, 10)\n");
+    }
+
+    ALLOC_ARRAY(costs, SIZE, float)
+    ALLOC_ARRAY(new_costs, SIZE, float)
     
     if (ga->sel_alg == ROULETTE) {
-        ARRAY(probs, SIZE, float)
+        ALLOC_ARRAY(probs, SIZE, float)
     } else {
-        ARRAY(participants, ga->tour_size, int)
+        ALLOC_ARRAY(participants, ga->tour_size, int)
     }
     return 0;
 
@@ -360,9 +371,10 @@ ga(gaconf* ga, float (*func)(float*))
     float prev_best = FLT_MAX;
     ga = ga == NULL ? &def : ga;
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
-
+    
+    ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
     srand48(time(NULL));
-    generate_initial_pop(ga->min, ga->max, ga->dims, ga->size);
+    generate_initial_pop(ga->ranges, ga->dims, ga->size);
 
     calculate_costs(pop, costs, func);
     quicksort_pop(pop, costs, 0, SIZE-1);
