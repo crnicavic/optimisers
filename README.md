@@ -2,19 +2,33 @@
 
 Genetic algorithm i wrote for personal use in C.
 
-Written in suckless coding style (not completely), but the software still sucks. A lot.
-
-Compiled with gcc, because otherwise drand doesn't work, and I didn't want to bother.
+Written in suckless coding style.
+Used on GNU/Linux and OpenBSD.
 
 ```c
 genetic.h - the main file
 main.c and Makefile - if you wish to test it yourself
 ```
 
-The genetic.h file has a lot of functions, but the only 2 of concern are
+Usage is simple, include `genetic.h` and call:
 ```c
-static int ga_init(gaconf *ga);
 static float* ga(gaconf* ga, float (*func)(float*));
 ```
-Before calling ga, which is the function that does everything, call ga_init to allocate everything.
-You can do it yourself if for some reason dynamic allocation isn't an option.
+where gaconf is defined as:
+```c
+typedef struct gaconf{
+    float min;      /* the minimum if the range */
+    float max;      /* the maximum of the range */
+    int dims;       /* dimensions of the target function */
+    int size;       /* population size */
+    int tour_size;  /* the size of the n/2 tournament */
+    float mut_rate; /* probability of mutation from 0 to 1 */
+    int elitis;     /* count of units to conserve to elitis */
+    int gens;       /* generation count */
+    int find_max;   /* 0 if looking for maximum */
+    int sel_alg;    /* selection algorithm */
+}gaconf;
+```
+or simply leave it null to use the defaults.
+If ga returns `NULL` there has been an error, otherwise, it returns an array, that has the best solution the algorithm found.
+
