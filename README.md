@@ -30,5 +30,5 @@ typedef struct gaconf{
 }gaconf;
 ```
 or simply leave it null to use the defaults.
-If ga returns `NULL` there has been an error, otherwise, it returns an array, that has the best solution the algorithm found.
+If ga returns `NULL` there has been an error, otherwise, it returns the best solution as an array.
 
