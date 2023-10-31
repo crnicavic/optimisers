@@ -17,7 +17,7 @@ Copyright (C) 2023
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* TODO: I don't need to sort */
+/* TODO: Tournament selection needs to exist again */
 /* TODO: Make uneven elitis work, and switch it to percentage */
 /* TODO: swap macro */
 
@@ -217,7 +217,7 @@ roulette(int find_max)
 }
 
 static void
-tournament(int param) 
+tournament(int participant_count) 
 {
     return;
 }
@@ -272,9 +272,7 @@ static void
 elitism(int elitis)
 {
     int it = 0;
-    /* find elitis best units in pop
-     * and set them at the first elitis indices
-     */
+    
     temp_pop = pop;
     pop = new_pop;
     new_pop = temp_pop;
@@ -284,12 +282,9 @@ elitism(int elitis)
     new_costs = temp_costs;
     
     find_kth(0, SIZE-1, elitis); 
-    /* find elitis worst units in new_pop
-     * and place them at first elitis indices
-     * a little hacky but should work
-     */
 
     MINIMUM = FALSE;
+    
     find_kth(0, SIZE-1, elitis);
     
     MINIMUM = TRUE;
