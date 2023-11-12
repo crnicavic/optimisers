@@ -17,58 +17,48 @@ Copyright (C) 2023
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* TODO: Tournament selection needs to exist again */
-/* TODO: Make uneven elitis work, and switch it to percentage */
-/* TODO: swap macro */
-
 #include "genetic.h"
 
 
-static int create_matrix(int rows, int cols);
-static int create_array(int size);
 static void generate_initial_pop(float *ranges);
 static void calculate_costs(float(*f)(float*));
 static int greater(float a, float b);
 static int lesser(float a, float b);
-int partition(int start, int stop);
-void quicksort_pop(int start, int stop);
-static void tournament(int participant_count);
-static float prob_max(float cost);
-static float prob_min(float cost);
+static int partition(int start, int stop);
+static int find_kth(int start, int stop, int k);
+static int* max_min(float *arr);
+static void prob_max(int* max_min);
+static void prob_min(int* max_min);
+static inline int spin();
 static void roulette(int find_max);
+static int tournament(int participant_count); 
+static void brackets(int participant_count);
 static void crossover_sym();
 static void mutation(float mut_rate);
 static void elitism(int elitis);
 static int ga_init(gaconf *ga);
+static void free_ga(gaconf *ga);
 float* ga(gaconf* ga, float (*func)(float*));
 
 
-gaconf def = {NULL, 2, 30, 5, 0.3, 2, 30, FALSE, TOURNAMENT};
+gaconf def = {NULL, 2, 30, 5, 0.3, 2, 30, FALSE, ROULETTE};
 
-int DIMS = 0;
-int SIZE = 0;
-int MINIMUM = 0;
+static int DIMS = 0;
+static int SIZE = 0;
+static int MAXIMUM = 0;
 
-int (*compare[2]) (float a, float b) = {greater, lesser} ;
-void (*sel[2]) (int par) = {roulette, tournament};
-float (*prob[2]) (float cost) = {prob_min, prob_max};
-
-
-float **temp_pop;
-float *temp_costs;
-
-float temp_cost;
-float* temp_chr;
+static int (*compare[2]) (float a, float b) = {lesser, greater} ;
+static void (*sel[2]) (int par) = {roulette, brackets};
+static void (*prob[2]) (int* max_min) = {prob_min, prob_max};
 
 static float **pop;
 static float *costs;
 static float **new_pop;
 static float *new_costs;
-float *probs;
-int *participants;
+static float *probs;
+static int *participants;
 static int **pairs;
 
-int rr;
 
 static void 
 generate_initial_pop(float *ranges)
@@ -111,36 +101,26 @@ lesser(float a, float b)
 }
 
 
-int
+static int
 partition(int start, int stop)
 {
     int pivot = start;
     int it = start;
     for (; it < stop; it++) {
-        if (compare[MINIMUM](new_costs[stop], new_costs[it])) {
-            temp_cost = new_costs[it];
-            new_costs[it] = new_costs[pivot];
-            new_costs[pivot] = temp_cost;
-            
-            temp_chr = new_pop[it];
-            new_pop[it] = new_pop[pivot];
-            new_pop[pivot] = temp_chr;
-
+        if (compare[MAXIMUM](new_costs[stop], new_costs[it])) {
+            swap(new_costs[it], new_costs[pivot], float); 
+            swap(new_pop[it], new_pop[pivot], float*);
             pivot++;
         }
     }
-    temp_cost = new_costs[stop];
-    new_costs[stop] = new_costs[pivot];
-    new_costs[pivot] = temp_cost;
     
-    temp_chr = new_pop[stop];
-    new_pop[stop] = new_pop[pivot];
-    new_pop[pivot] = temp_chr;
+    swap(new_costs[stop], new_costs[pivot], float); 
+    swap(new_pop[stop], new_pop[pivot], float*);
 
     return pivot;
 }
 
-int
+static int 
 find_kth(int start, int stop, int k)
 {
     if (start >= stop) {
@@ -151,13 +131,8 @@ find_kth(int start, int stop, int k)
     static int pos;
     static int lsize;
 
-    temp_cost = new_costs[stop];
-    new_costs[stop] = new_costs[pivot];
-    new_costs[pivot] = temp_cost;
-    
-    temp_chr = new_pop[stop];
-    new_pop[stop] = new_pop[pivot];
-    new_pop[pivot] = temp_chr;
+    swap(new_costs[stop], new_costs[pivot], float);
+    swap(new_pop[stop], new_pop[pivot], float*);
 
     pos = partition(start, stop);
     lsize = pos - start + 1;
@@ -173,54 +148,130 @@ find_kth(int start, int stop, int k)
 }
 
 
-static float
-prob_max(float cost)
+static int* 
+max_min(float *arr)
 {
-    return (cost - costs[0]) / (costs[SIZE-1] - costs[0]);
+    int it = 2;
+    static int ret[2] = {0, 0};
+    static int min, max;
+    if (arr[0] > arr[1]) {
+        min = 1;
+        max = 0;
+    } else {
+        min = 0;
+        max = 1;
+    }
+
+    while (it < SIZE-1) {
+        if (arr[it] > arr[it+1]) {
+            max = arr[max] < arr[it] ? it : max;
+            it++;
+            min = arr[min] > arr[it] ? it : min;
+        } else {
+            min = arr[min] > arr[it] ? it : min;
+            it++;
+            max = arr[max] < arr[it] ? it : max;
+        }
+        it++;
+    }
+    ret[0] = max; 
+    ret[1] = min;
+    return ret;
 }
 
-static float
-prob_min(float cost)
+
+/* the problem is that the array is no longer sorted */
+static void
+prob_max(int* max_min)
 {
-    return 1 - (cost - costs[0]) / (costs[SIZE-1] - costs[0]);
+    int row = 0;
+    float range = costs[max_min[0]] - costs[max_min[1]];
+    float min = costs[max_min[1]];
+    for (; row < SIZE; row++) {
+        probs[row] = (costs[row] - min) / range;    
+    }
 }
+
+static void
+prob_min(int* max_min)
+{
+    int row=0;
+    float range = costs[max_min[0]] - costs[max_min[1]];
+    float min = costs[max_min[1]];
+    for (; row < SIZE; row++) {
+        probs[row] = 1 - (costs[row] - min) / range;    
+    }
+}
+
+
+static inline int
+spin()
+{
+    float temp = drand48();
+    float prob_sum = 0;
+    int parent = 0;
+    while(prob_sum < temp){
+        prob_sum += probs[parent]; /* SEGFAULT OCCURS HERE */
+        parent++;
+    }
+
+    return parent;
+}
+
 
 static void
 roulette(int find_max)
 {
-    float temp;
     int row = 0, col = 0;
     int pair = 0;
-    int parent = -1;
-    
-    float prob_sum = 0;
+    int *r = max_min(costs); 
 
-    float range = costs[SIZE-1] - costs[0];
-
-    for (; row < SIZE; row++){
-        probs[row] = prob[find_max](costs[row]); 
-    }
+    prob[find_max](r);
 
     for (; pair < SIZE/2; pair++) {
         col = 0;
         for (; col < 2; col++) {
-            prob_sum = 0;
-            temp = drand48();
-            parent = 0;
-            while(prob_sum < temp){
-                prob_sum += probs[parent];
-                parent++;
-            }
-            pairs[pair][col] = parent;
+            pairs[pair][col] = spin();
         }
     }
 }
 
-static void
+
+static int
 tournament(int participant_count) 
 {
-    return;
+    int it = 1, win = -1;
+
+    participants[0] = drand48() * SIZE;
+    win = participants[0];
+    for (;it < participant_count; it++) {
+        participants[it] = drand48() * SIZE;
+        
+        while (participants[it] == participants[it-1]) {
+            participants[it] = drand48() * SIZE;
+        }
+
+        if(compare[MAXIMUM](costs[participants[it]],costs[win])) {
+            win = participants[it];
+        }
+    }
+    return win;
 }
+
+
+static void
+brackets(int participant_count)
+{
+    int row = 0, col = 0;
+    int pair = 0;
+    for (; pair < SIZE/2; pair++) {
+        col = 0;
+        for (; col < 2; col++) {
+            pairs[pair][col] = tournament(participant_count);
+        }
+    }
+}
+
 
 /* symmetrical crossover */
 static void
@@ -259,10 +310,8 @@ mutation(float mut_rate)
     for (; row < SIZE; row++) {
         col = 0;
         for (; col < DIMS; col++) {  
-            if (drand48() < mut_rate) {
-                r = drand48() * 2;
-                new_pop[row][col] += r - 1;
-            }
+            r = drand48() < mut_rate ? (drand48() * 2) - 1 : 0;
+            new_pop[row][col] += r;
         }
     }
 }
@@ -272,39 +321,26 @@ static void
 elitism(int elitis)
 {
     int it = 0;
-    
-    temp_pop = pop;
-    pop = new_pop;
-    new_pop = temp_pop;
+   
+    swap(pop, new_pop, float**);
+    swap(costs, new_costs, float*);
 
-    temp_costs = costs;
-    costs = new_costs;
-    new_costs = temp_costs;
-    
+    /* looks for elitis best */
     find_kth(0, SIZE-1, elitis); 
 
-    MINIMUM = FALSE;
+    MAXIMUM = MAXIMUM ^ 1;
     
+    /*looks for elitis worst */
     find_kth(0, SIZE-1, elitis);
     
-    MINIMUM = TRUE;
+    MAXIMUM = MAXIMUM ^ 1;
 
-    temp_pop = pop;
-    pop = new_pop;
-    new_pop = temp_pop;
-
-    temp_costs = costs;
-    costs = new_costs;
-    new_costs = temp_costs;
+    swap(pop, new_pop, float**);
+    swap(costs, new_costs, float*);
     
     for(; it < elitis; it++) {
-        temp_cost = new_costs[it];
-        new_costs[it] = costs[it];
-        costs[it] = temp_cost;
-
-        temp_chr = new_pop[it];
-        new_pop[it] = pop[it];
-        pop[it] = temp_chr;
+        swap(costs[it], new_costs[it], float);
+        swap(pop[it], new_pop[it], float*);
     }
 }
 
@@ -316,7 +352,7 @@ ga_init(gaconf *ga)
  
     SIZE = ga->size;
     DIMS = ga->dims;
-    MINIMUM = ga->find_max;
+    MAXIMUM = ga->find_max;
 
     ALLOC_MATRIX(pop, SIZE, DIMS, float)
     ALLOC_MATRIX(pairs, SIZE/2, 2, int)
@@ -345,6 +381,20 @@ ga_init(gaconf *ga)
 }
 
 
+static void
+free_ga(gaconf *ga)
+{
+    free(costs);
+    free(new_costs);
+    free(probs);
+    free(participants);
+    
+    FREE_MATRIX(new_pop, SIZE, 0)
+    FREE_MATRIX(pop, SIZE, 1)
+    FREE_MATRIX(pairs, SIZE/2, 0)
+}
+
+
 float*
 ga(gaconf* ga, float (*func)(float*))
 {
@@ -353,18 +403,13 @@ ga(gaconf* ga, float (*func)(float*))
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
     
     ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
-    srand48(time(NULL));
+    srand48(-time(NULL));
     
     generate_initial_pop(ga->ranges);
     calculate_costs(func);
 
-    temp_pop = pop;
-    pop = new_pop;
-    new_pop = temp_pop;
-
-    temp_costs = costs;
-    costs = new_costs;
-    new_costs = temp_costs;
+    swap(pop, new_pop, float**);
+    swap(costs, new_costs, float*);
     
     for (int it = 0; it < ga->gens; it++) {
         
@@ -373,18 +418,13 @@ ga(gaconf* ga, float (*func)(float*))
         mutation(ga->mut_rate);
 
         calculate_costs(func);
-        elitism(ga->elitis);
+        elitism(ga->elitis * SIZE);
         
         calculate_costs(func); 
 
-        temp_pop = pop;
-        pop = new_pop;
-        new_pop = temp_pop;
-
-        temp_costs = costs;
-        costs = new_costs;
-        new_costs = temp_costs;
+        swap(pop, new_pop, float**);
+        swap(costs, new_costs, float*);
     }
-    
-    return pop[0];
+    int *mm = max_min(costs);
+    return pop[mm[MAXIMUM ^ 1]];
 }
