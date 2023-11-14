@@ -4,8 +4,17 @@ Genetic algorithm i wrote for personal use in C.
 
 ```c
 genetic.h - the main file
-main.c and Makefile - if you wish to test it yourself
+example1.c - neural network training
+example2.c - simple 2d function
+data/processed.cleveland.data - data the network was trained with
 ```
+
+Keep in mind the neural network is pretty simple, and pretty bad, it
+is there mainly for demonstration purposes, and because of my own
+curiosity.
+
+The data has been downloaded from https://archive.ics.uci.edu/dataset/45/heart+disease
+and i hope they won't sue me.
 
 Usage is simple, include `genetic.h` and call:
 ```c
@@ -14,18 +23,17 @@ static float* ga(gaconf* ga, float (*func)(float*));
 where gaconf is defined as:
 ```c
 typedef struct gaconf{
-    float *ranges;  /* range limit per dimension */ 
+    float *ranges; 
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
     int tour_size;  /* the size of the n/2 tournament */
     float mut_rate; /* probability of mutation from 0 to 1 */
-    int elitis;     /* count of units to conserve to elitis */
+    float elitis;   /* percentage of units to be taken into next gen*/ 
     int gens;       /* generation count */
     int find_max;   /* 0 if looking for maximum */
     int sel_alg;    /* selection algorithm */
 }gaconf;
 ```
-or simply leave it `NULL` to use the defaults.
 If the `ga` function returns `NULL` there has been an error, otherwise,
 it returns the best solution as an array.
 ```c
