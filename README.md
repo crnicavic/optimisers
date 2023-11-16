@@ -1,6 +1,6 @@
 # genetic-real
 
-Genetic algorithm i wrote for personal use in C.
+Genetic algorithm ~~I wrote for personal use~~ in C.
 
 ```c
 genetic.h - the main file
