@@ -19,7 +19,6 @@ Copyright (C) 2023
 
 #include "genetic.h"
 
-
 static void generate_initial_pop(float *ranges);
 static void calculate_costs(float(*f)(float*));
 static int greater(float a, float b);
@@ -43,9 +42,9 @@ float* ga(gaconf* ga, float (*func)(float*));
 
 gaconf def = {NULL, 2, 30, 5, 0.3, 2, 30, FALSE, ROULETTE};
 
-static int DIMS = 0;
-static int SIZE = 0;
-static int MAXIMUM = 0;
+static int DIMS;
+static int SIZE;
+static int MAXIMUM;
 
 static int (*compare[2]) (float a, float b) = {lesser, greater} ;
 static void (*sel[2]) (int par) = {roulette, brackets};
@@ -211,7 +210,7 @@ spin()
     float prob_sum = 0;
     int parent = 0;
     while(prob_sum < temp){
-        prob_sum += probs[parent]; /* SEGFAULT OCCURS HERE */
+        prob_sum += probs[parent]; 
         parent++;
     }
 
@@ -354,9 +353,9 @@ ga_init(gaconf *ga)
     DIMS = ga->dims;
     MAXIMUM = ga->find_max;
 
-    ALLOC_MATRIX(pop, SIZE, DIMS, float)
-    ALLOC_MATRIX(pairs, SIZE/2, 2, int)
-    ALLOC_MATRIX(new_pop, SIZE, DIMS, float)
+    ALLOC_MATRIX(pop, SIZE, DIMS, float);
+    ALLOC_MATRIX(pairs, SIZE/2, 2, int);
+    ALLOC_MATRIX(new_pop, SIZE, DIMS, float);
 
     if(ga->ranges == NULL) {
         ALLOC_ARRAY(ga->ranges, DIMS * 2, float);
@@ -368,13 +367,13 @@ ga_init(gaconf *ga)
         printf("Warning: no ranges specified!\n setting as (-10, 10)\n");
     }
 
-    ALLOC_ARRAY(costs, SIZE, float)
-    ALLOC_ARRAY(new_costs, SIZE, float)
+    ALLOC_ARRAY(costs, SIZE, float);
+    ALLOC_ARRAY(new_costs, SIZE, float);
     
     if (ga->sel_alg == ROULETTE) {
-        ALLOC_ARRAY(probs, SIZE, float)
+        ALLOC_ARRAY(probs, SIZE, float);
     } else {
-        ALLOC_ARRAY(participants, ga->tour_size, int)
+        ALLOC_ARRAY(participants, ga->tour_size, int);
     }
     return 0;
 
@@ -389,9 +388,9 @@ free_ga(gaconf *ga)
     free(probs);
     free(participants);
     
-    FREE_MATRIX(new_pop, SIZE, 0)
-    FREE_MATRIX(pop, SIZE, 1)
-    FREE_MATRIX(pairs, SIZE/2, 0)
+    FREE_MATRIX(new_pop, SIZE, 0);
+    FREE_MATRIX(pop, SIZE, 1);
+    FREE_MATRIX(pairs, SIZE/2, 0);
 }
 
 
@@ -401,7 +400,9 @@ ga(gaconf* ga, float (*func)(float*))
     float prev_best = FLT_MAX;
     ga = ga == NULL ? &def : ga;
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
-    
+    int *mm;
+    float* ret;
+
     ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
     srand48(-time(NULL));
     
@@ -425,6 +426,8 @@ ga(gaconf* ga, float (*func)(float*))
         swap(pop, new_pop, float**);
         swap(costs, new_costs, float*);
     }
-    int *mm = max_min(costs);
-    return pop[mm[MAXIMUM ^ 1]];
+    mm = max_min(costs);
+    puts("");
+    swap(pop[0], pop[mm[MAXIMUM^1]], float*);
+    return pop[0];
 }
