@@ -14,7 +14,8 @@ float g(float *x)
 int main()
 {
     float ranges[] = {1.5, 6.0};
-    float *sol = pso(f, 1, 15, ranges, 1000);
+    psoconf psoconf = { ranges, 1, 10, 100};
+    float *sol = pso(f, &psoconf);
     printf("%f", sol[0]);
     return 0;
 }
