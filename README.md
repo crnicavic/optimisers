@@ -64,5 +64,8 @@ default interval which is (-10, 10).
 Also pso doesn't have special functionality for specifying
 do you want to find the minimum or maximum, because it isn't
 necessary, so just multiply your function by -1 or any hack 
-you can think of. If you have a clever or funny solution,
-please send it to me!
+you can think of. 
+# TODO of sorts
+I do wish to fix the lack of uniformity (such as ranges not working the same),
+but currently i don't have the need for it, since the code did it's job.
+I also want to make some even crazier examples, but to each it's own.
