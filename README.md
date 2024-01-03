@@ -1,12 +1,15 @@
 # genetic-real
 
-Genetic algorithm ~~I wrote for personal use~~ in C.
+Genetic algorithm and Particle Swarm optimization written in C.
 
 ```c
-genetic.h - the main file
-example1.c - neural network training
-example2.c - simple 2d function
-data/processed.cleveland.data - data the network was trained with
+ga/genetic.h - ga library header
+ga/genetic.c - main ga file
+ga/example1.c - neural network training
+ga.example2.c - simple 2d function
+ga/data/processed.cleveland.data - data the network was trained with
+pso/pso.h - pso library header
+pso/pso.c - main pso file
 ```
 
 Keep in mind the neural network is pretty simple, and pretty bad, it
@@ -16,14 +19,17 @@ curiosity.
 The data has been downloaded from https://archive.ics.uci.edu/dataset/45/heart+disease
 and i hope they won't sue me.
 
-Usage is simple, include `genetic.h` and call:
+Usage is simple, include `genetic.h` or `pso.h` and call:
 ```c
-static float* ga(gaconf* ga, float (*func)(float*));
+float* ga(gaconf* ga, float (*func)(float*));
+or
+float *pso(float (*f)(float *), psoconf* pso);
 ```
-where gaconf is defined as:
+
+# gaconf
 ```c
 typedef struct gaconf{
-    float *ranges; 
+    float *ranges;  /* the range for each dimension */
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
     int tour_size;  /* the size of the n/2 tournament */
@@ -41,3 +47,22 @@ it returns the best solution as an array.
 conf.ranges = {{min_D1, max_D1}, {min_D2, max_D2}, ...
 ```
 if `ranges` are set to `NULL`, the default interval is (-10, 10)
+
+# psoconf
+```c
+typedef struct psoconf
+{
+    float *ranges; /* Ranges of all particles */
+    int dims;      /* Dimensions of the target function. */
+    int size;      /* Size of the swarm. */
+    int gens;      /* generation count */
+} psoconf;
+```
+Here ranges work a little different, it only takes 2 elements
+and applies to all dimensions, if set to NULL, it uses the
+default interval which is (-10, 10).
+Also pso doesn't have special functionality for specifying
+do you want to find the minimum or maximum, because it isn't
+necessary, so just multiply your function by -1 or any hack 
+you can think of. If you have a clever or funny solution,
+please send it to me!
