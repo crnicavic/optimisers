@@ -4,7 +4,7 @@
 #include <time.h>
 
 #define RANDOM_FLOAT(lower, upper) \
-    ((float)rand() / (float)RAND_MAX) * (upper - lower) + lower;
+    ((float)rand() / (float)RAND_MAX) * (upper - lower) + lower
 
 #define COPY_ARRAY(array1, array2, size) \
     for (int i = 0; i < size; i++)       \
