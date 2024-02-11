@@ -9,7 +9,7 @@ static float omega = 0.9;
 static float phi_p = 2.5;
 static float phi_g = 0.5;
 
-static psoconfig *config;
+static psoconf *config;
 static int DIMS;
 static int SIZE;
 
@@ -31,7 +31,7 @@ static void generate_initial_swarm()
     }
 }
 
-static void pso_init(float (*f)(float *), psoconfig *psoc)
+static void pso_init(float (*f)(float *), psoconf *psoc)
 {
     srand(-time(NULL));
 
@@ -75,7 +75,7 @@ static void find_best(float (*f)(float *))
     }
 }
 
-float *pso(float (*f)(float *), psoconfig *psoc)
+float *pso(float (*f)(float *), psoconf *psoc)
 {
     pso_init(f, psoc);
     int ITERS = config->iters;

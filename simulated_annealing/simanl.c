@@ -3,16 +3,16 @@
 
 static int DIMS;
 static float *C = NULL, *N = NULL;
-static simanlconfig *config;
+static simanlconf *config;
 
-static void simanl_init(simanlconfig *simanl)
+static void simanl_init(simanlconf *simanlc)
 {
     srand(-time(NULL));
-    config = simanl;
+    config = simanlc;
 
     if (config->ranges == NULL)
     {
-        ALLOC_ARRAY(simanl->ranges, 2, float);
+        ALLOC_ARRAY(config->ranges, 2, float);
         config->ranges[0] = -10.0;
         config->ranges[1] = 10.0;
         WARN("No ranges specified. Using default, which is (-10.0, 10.0)\n");
@@ -41,10 +41,10 @@ static void find_neighbour(float *C, float *N)
     }
 }
 
-float *simmulated_annealing(float (*E)(float *), simanlconfig *simanl)
+float *simmulated_annealing(float (*E)(float *), simanlconf *simanlc)
 {
-    simanl_init(simanl);
-    int ITERS = simanl->iters;
+    simanl_init(simanlc);
+    int ITERS = config->iters;
 
     /* Minimization problem */
     for (int iter = 0; iter < ITERS; iter++)
