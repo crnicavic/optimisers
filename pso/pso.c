@@ -12,22 +12,12 @@ static float omega = 0.9;
 static float phi_p = 2.5;
 static float phi_g = 0.5;
 
-static psoconf def = {.ranges = NULL, .dims = 1, .size = 10, .iters = 100};
-
-static void generate_initial_pop(float *ranges);
-static int pso_init(float (*f)(float *), psoconf *pso);
-static void find_best(float (*f)(float *));
-static void update_swarm(float (*f)(float *), float *ranges);
-float *pso(float (*f)(float *), psoconf *pso);
-
 static void
 generate_initial_pop(float *ranges)
 {
-    int i = 0, j;
-    for (; i < SIZE; i++)
+    for (int i = 0; i < SIZE; i++)
     {
-        j = 0;
-        for (; j < DIMS; j++)
+        for (int j = 0; j < DIMS; j++)
         {
             swarm_pos[i][j] = RANDOM_FLOAT(ranges[0], ranges[1]);
             swarm_vel[i][j] = 0.0;
@@ -48,15 +38,14 @@ pso_init(float (*f)(float *), psoconf *pso)
 
     if (pso->ranges == NULL)
     {
+        ALLOC_ARRAY(pso->ranges, 2, float);
         pso->ranges[0] = -10.0;
         pso->ranges[1] = 10.0;
         WARN("No ranges specified. Using default, which is (-10.0, 10.0)\n");
     }
-    printf("%f, %f\n", pso->ranges[0], pso->ranges[1]);
 
     float *init_best = particle_best[0];
-    int i = 1;
-    for (; i < pso->size; i++)
+    for (int i = 1; i < pso->size; i++)
     {
         if (f(particle_best[i]) < f(init_best))
         {
@@ -64,13 +53,13 @@ pso_init(float (*f)(float *), psoconf *pso)
         }
     }
     COPY_ARRAY(init_best, global_best, pso->dims);
+    return 0;
 }
 
 static void
 find_best(float (*f)(float *))
 {
-    int i = 0;
-    for (; i < SIZE; i++)
+    for (int i = 0; i < SIZE; i++)
     {
         if (f(swarm_pos[i]) >= f(particle_best[i]))
         {
@@ -88,11 +77,9 @@ static void
 update_swarm(float (*f)(float *), float *ranges)
 {
     static float r_p, r_g;
-    int i = 0, j;
-    for (; i < SIZE; i++)
+    for (int i = 0; i < SIZE; i++)
     {
-        j = 0;
-        for (; j < DIMS; j++)
+        for (int j = 0; j < DIMS; j++)
         {
             r_p = (RANDOM_FLOAT(0, 1));
             r_g = (RANDOM_FLOAT(0, 1));
@@ -115,14 +102,12 @@ update_swarm(float (*f)(float *), float *ranges)
 float *
 pso(float (*f)(float *), psoconf *pso)
 {
-    int iter = 0;
     ASSERT(pso_init(f, pso) >= 0, NULL, "pso init fail!\n")
     generate_initial_pop(pso->ranges);
     srand(-time(NULL));
 
-    for (; iter < pso->iters; iter++)
+    for (int iter = 0; iter < pso->iters; iter++)
     {
-        // printf("%f %f\n", *global_best, f(global_best));
         update_swarm(f, pso->ranges);
         phi_p = 2.0 * (float)iter / (float)pso->iters + 2.5;
         phi_g = 2.0 * (float)iter / (float)pso->iters + 2.5;

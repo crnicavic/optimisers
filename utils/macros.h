@@ -23,7 +23,6 @@
     if (!(_e))                        \
     {                                 \
         fprintf(stderr, __VA_ARGS__); \
-        return f;                     \
     }
 
 /* v- variable(name) s-size t-type */
@@ -74,17 +73,3 @@
 #define TRUE 1
 #define FALSE 0
 #define FAIL -1
-
-typedef struct psoconf
-{
-    float *ranges; /* Ranges of all particles */
-    int dims;      /* Dimensions of the target function. */
-    int size;      /* Size of the swarm. */
-    int iters;     /* Number of PSO iterations. */
-} psoconf;
-
-static void generate_initial_pop(float *ranges);
-static int pso_init(float (*f)(float *), psoconf *pso);
-static void find_best(float (*f)(float *));
-static void update_swarm(float (*f)(float *), float *ranges);
-float *pso(float (*f)(float *), psoconf *pso);
