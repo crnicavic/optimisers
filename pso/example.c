@@ -1,5 +1,4 @@
 #include "pso.h"
-#include <math.h>
 
 float f(float *x)
 {
@@ -13,9 +12,9 @@ float g(float *x)
 
 int main()
 {
-    float ranges[] = {1.5, 6.0};
-    psoconf psoconf = {ranges, 1, 10, 100};
-    float *sol = pso(f, &psoconf);
+    float ranges[] = {0.0, 6.0};
+    psoconfig config = {ranges, 1, 15, 1000};
+    float *sol = pso(f, &config);
     printf("%f", sol[0]);
     return 0;
 }

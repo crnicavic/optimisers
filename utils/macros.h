@@ -4,8 +4,9 @@
 #include <time.h>
 
 /* warning - Warning string */
-#define WARN(warning) \
-    printf("%s", warning);
+#define WARN(warning)  \
+    puts("WARNING\n"); \
+    puts(warning);
 
 #define RANDOM_FLOAT(lower, upper) \
     ((float)rand() / (float)RAND_MAX) * (upper - lower) + lower

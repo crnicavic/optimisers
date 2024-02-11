@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <math.h>
 
-typedef struct simanlconf
+typedef struct simanlconfig
 {
     float *ranges; /* Ranges of all particles */
     int dims;      /* Dimensions of the target function. */
     int iters;     /* Number of simulated annealing iterations. */
-} simanlconf;
+} simanlconfig;
 
-static void simanl_init(simanlconf *simanl);
-static void find_neighbour(float *C, float *N, simanlconf *simanl);
-float *simmulated_annealing(float (*E)(float *), simanlconf *simanl);
+static void simanl_init(simanlconfig *simanl);
+static void find_neighbour(float *C, float *N);
+float *simmulated_annealing(float (*E)(float *), simanlconfig *simanl)
