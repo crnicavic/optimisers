@@ -80,7 +80,7 @@ typedef struct psoconf
     float *ranges; /* Ranges of all particles */
     int dims;      /* Dimensions of the target function. */
     int size;      /* Size of the swarm. */
-    int iters;     /* Iterations count. */
+    int iters;     /* Number of PSO iterations. */
 } psoconf;
 
 float *pso(float (*f)(float *), psoconf *pso);
