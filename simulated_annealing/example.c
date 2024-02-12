@@ -1,4 +1,4 @@
-#include "pso.h"
+#include "simanl.h"
 
 float f(float *x)
 {
@@ -13,8 +13,9 @@ float g(float *x)
 int main()
 {
     float ranges[] = {0.0, 6.0};
-    psoconfig config = {ranges, 1, 15, 1000};
-    float *sol = pso(f, &config);
+    simanlconf simanlconf = {ranges, 1, 1000};
+    float *sol = simmulated_annealing(f, &simanlconf);
     printf("%f", sol[0]);
+    free(sol);
     return 0;
 }

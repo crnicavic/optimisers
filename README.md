@@ -55,7 +55,7 @@ typedef struct psoconf
     float *ranges; /* Ranges of all particles */
     int dims;      /* Dimensions of the target function. */
     int size;      /* Size of the swarm. */
-    int gens;      /* generation count */
+    int iters;     /* Number of PSO iterations. */
 } psoconf;
 ```
 Here ranges work a little different, it only takes 2 elements
