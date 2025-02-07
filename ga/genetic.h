@@ -45,6 +45,8 @@ typedef enum selection
     TOURNAMENT
 }selection;
 
+
+//TODO: all of these should be function pointers
 typedef struct gaconf{
     float *ranges; 
     const int dims;       /* dimensions of the target function */
