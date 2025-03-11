@@ -16,9 +16,10 @@ class ga_conf(ctypes.Structure):
 
 
 # target function type
-CREATE_C_FUNCTION_TYPE = ctypes.CFUNCTYPE(ctypes.pointer(ctypes.c_float))
+c_callback = ctypes.CFUNCTYPE(ctypes.pointer(ctypes.c_float))
 
 fun = ctypes.CDLL("libgenetic.so")
 
-fun.myFunction.argtypes = []
+fun.myFunction.argtypes = [ctypes.pointer(ga_conf), c_callback]
+fun.ga
 
