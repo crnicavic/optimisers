@@ -4,12 +4,13 @@
 void* ndarr(int* shape, int dims, size_t element_size)
 {
 	int i = 0;
+	int k = 0;
 	size_t total_elements = 1;
 	size_t total_pointers = shape[dims-2];
 	size_t total_length = 0;
 	size_t total_size = 0;
-	size_t subaray_size = 0;
-	
+	size_t level_size = 0;
+
 	for(i = 0; i < dims; i++) {
 		total_elements *= shape[i];
 	}
@@ -31,16 +32,23 @@ void* ndarr(int* shape, int dims, size_t element_size)
 	
 	void **data_iterator = (void**) base_data;
 	i = total_pointers - 1;
+
+	level_size = total_elements / shape[dims-1];
 	/* set in-data pointers */
-	while(data_iterator <= end_ptr) {
-		base_ptr[i] = data_iterator;
-		i--;
+	while(k >= (total_pointers - level_size) && data_iterator < end_ptr) {
+		base_ptr[k] = data_iterator;
+		k--;
 		data_iterator += element_size * shape[dims-1];
 	}
 
-	for(i = dims - 2; i >= 0; --i) {
+	int start;
+	int end;
+	for(i = dims - 2; i > 0; --i) {
+		level_size = level_size / shape[i];
+		start = level_size / shape[(i-1)]; 
+		end = start + level_size;
+		printf("%d\n", end - start);
 	}
-	printf("\n");
 
 	return NULL;
 }
