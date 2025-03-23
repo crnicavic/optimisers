@@ -34,34 +34,50 @@ void* ndarr(int* shape, int dims, size_t element_size)
 	i = total_pointers - 1;
 
 	level_size = total_elements / shape[dims-1];
+	k = total_pointers - 1;
+	int loop_counter = 0; /* debugging purposes, will be removed */
 	/* set in-data pointers */
 	while(k >= (total_pointers - level_size) && data_iterator < end_ptr) {
+		//printf("%d ", k);
 		base_ptr[k] = data_iterator;
+		loop_counter++;
 		k--;
 		data_iterator += element_size * shape[dims-1];
 	}
+	printf("data pointers assigned: %d\n", loop_counter);
 
 	int start;
-	int end;
+	int end = total_pointers;
+	void **pointer_iterator;
 	for(i = dims - 2; i > 0; --i) {
+		end -= level_size;
 		level_size = level_size / shape[i];
-		start = level_size / shape[(i-1)]; 
-		end = start + level_size;
-		printf("%d\n", end - start);
+		pointer_iterator = base_ptr[end];
+		start = end - level_size; 
+		k = start;
+		for(k = start; k < end; k++)
+		{
+			base_ptr[k] = pointer_iterator;
+			pointer_iterator += sizeof(void**) * shape[i+1];
+			k++;
+		}
+		printf("start: %d\n", start);
+		printf("end: %d\n", end);
 	}
-
-	return NULL;
+	printf("\n");
+	return base_ptr;
 }
 
 
 int main(void)
 {
-	int shape[4] = {6, 5, 4, 3};
-	void *p1 = shape;
-	void *p2 = &p1;
-	void *p3 = &p2;
-	int ***p3_int = (int***) p3;
-	int a = p3_int[0][0][1];
-	void* ret = ndarr(shape, 4, sizeof(float));
+	int shape[5] = {7, 6, 5, 4, 3};
+	void *p = shape;
+	p = &p;
+	p = &p;
+	int ***p_int = (int***) p;
+	int a = p_int[0][0][1];
+	void** ret = ndarr(shape, 5, sizeof(float));
+	printf("%d", a);
 	return 0;
 }

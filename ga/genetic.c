@@ -407,6 +407,8 @@ ga(gaconf* ga, float (*func)(float*))
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
     int *mm;
     float* ret;
+	int n = 20;
+	int arr[n];
 
     ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
     srand48(-time(NULL));
@@ -432,7 +434,7 @@ ga(gaconf* ga, float (*func)(float*))
         swap(costs, new_costs, float*);
     }
     mm = max_min(costs);
-    puts("");
+	printf("%ld\n", len(pop));
     swap(pop[0], pop[mm[MAXIMUM^1]], float*);
     return pop[0];
 }

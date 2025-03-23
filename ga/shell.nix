@@ -13,6 +13,7 @@ mkShell {
 		python311Packages.tkinter						
 		gcc
 		gdb
+		lldb
 		cmake
 		gnumake
 		];

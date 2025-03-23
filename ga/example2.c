@@ -10,7 +10,7 @@ extern gaconf def;
 
 int main(){
         float test[2][2] = {{-1.0, 3.0}, {-2.0, 3.0}};
-        gaconf conf = {test, 2, 30, 5, 0.3, 0.1, 30, FALSE, ROULETTE};
+        gaconf conf = {NULL, 2, 30, 5, 0.3, 0.1, 30, FALSE, ROULETTE};
         float* winner = ga(&conf, f2);
         printf("Final: %.10f\n", f2(winner));
         return 0;
