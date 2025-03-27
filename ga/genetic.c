@@ -21,15 +21,12 @@ Copyright (C) 2023
 
 static void generate_initial_pop(float *ranges);
 static void calculate_costs(float(*f)(float*));
-static int greater(float a, float b);
-static int lesser(float a, float b);
 static int partition(int start, int stop);
 static int find_kth(int start, int stop, int k);
 static int* max_min(float *arr);
-static void prob_max(int* max_min);
 static void prob_min(int* max_min);
 static inline int spin();
-static void roulette(int find_max);
+static void roulette();
 static int tournament(int participant_count); 
 static void brackets(int participant_count);
 static void crossover_sym();
@@ -40,16 +37,9 @@ static int ga_init(gaconf *ga);
 static void free_ga(gaconf *ga);
 float* ga(gaconf* ga, float (*func)(float*));
 
-
-gaconf def = {NULL, 2, 30, 5, 0.3, 2, 30, FALSE, ROULETTE};
-
 static int DIMS;
 static int SIZE;
 static int MAXIMUM;
-
-static int (*compare[2]) (float a, float b) = {lesser, greater} ;
-static void (*sel[2]) (int par) = {roulette, brackets};
-static void (*prob[2]) (int* max_min) = {prob_min, prob_max};
 
 static float **pop;
 static float *costs;
@@ -87,27 +77,13 @@ calculate_costs(float(*f)(float*))
 }
 
 
-static int 
-greater(float a, float b)
-{
-    return a > b;
-}
-
-
-static int
-lesser(float a, float b)
-{
-    return a < b;
-}
-
-
 static int
 partition(int start, int stop)
 {
     int pivot = start;
     int it = start;
     for (; it < stop; it++) {
-        if (compare[MAXIMUM](new_costs[stop], new_costs[it])) {
+        if (new_costs[stop] > new_costs[it]) {
             swap(new_costs[it], new_costs[pivot], float); 
             swap(new_pop[it], new_pop[pivot], float*);
             pivot++;
@@ -181,17 +157,6 @@ max_min(float *arr)
 
 
 static void
-prob_max(int* max_min)
-{
-    int chr = 0;
-    float range = costs[max_min[0]] - costs[max_min[1]];
-    float min = costs[max_min[1]];
-    for (; chr < SIZE; chr++) {
-        probs[chr] = (costs[chr] - min) / range;    
-    }
-}
-
-static void
 prob_min(int* max_min)
 {
     int chr=0;
@@ -219,13 +184,13 @@ spin()
 
 
 static void
-roulette(int find_max)
+roulette()
 {
     int chr = 0, crd = 0;
     int pair = 0;
     int *r = max_min(costs); 
 
-    prob[find_max](r);
+    prob_min(r);
 
     for (; pair < SIZE/2; pair++) {
         crd = 0;
@@ -233,28 +198,6 @@ roulette(int find_max)
             pairs[pair][crd] = spin();
         }
     }
-}
-
-
-static int
-tournament(int participant_count) 
-{
-    int it = 1, win = -1;
-
-    participants[0] = drand48() * SIZE;
-    win = participants[0];
-    for (;it < participant_count; it++) {
-        participants[it] = drand48() * SIZE;
-        
-        while (participants[it] == participants[it-1]) {
-            participants[it] = drand48() * SIZE;
-        }
-
-        if(compare[MAXIMUM](costs[participants[it]],costs[win])) {
-            win = participants[it];
-        }
-    }
-    return win;
 }
 
 
@@ -417,7 +360,6 @@ ga_init(gaconf *ga)
  
     SIZE = ga->size;
     DIMS = ga->dims;
-    MAXIMUM = ga->find_max;
 	int pop_shape[2] = {SIZE, DIMS};
 	int pairs_shape[2] = {SIZE/2, 2};
 	
@@ -446,11 +388,7 @@ ga_init(gaconf *ga)
 	costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 	new_costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 
-    if (ga->sel_alg == ROULETTE) {
-		probs = (float*) ndarr(&ga->size, 1, sizeof(float));
-    } else {
-		participants = (int*) ndarr(&ga->tour_size, 1, sizeof(int));
-    }
+	probs = (float*) ndarr(&ga->size, 1, sizeof(float));
     return 0;
 
 }
@@ -472,8 +410,6 @@ float*
 ga(gaconf* ga, float (*func)(float*))
 {
     float prev_best = FLT_MAX;
-    ga = ga == NULL ? &def : ga;
-    int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
     int *mm;
     float* ret = malloc(ga->size * sizeof(float));
 	int n = 20;
@@ -490,7 +426,7 @@ ga(gaconf* ga, float (*func)(float*))
     
     for (int it = 0; it < ga->gens; it++) {
         
-        sel[ga->sel_alg](sel_parameter);
+		roulette();
         crossover_sym();
         mutation(ga->mut_rate);
 
@@ -503,7 +439,7 @@ ga(gaconf* ga, float (*func)(float*))
         swap(costs, new_costs, float*);
     }
     mm = max_min(costs);
-    swap(pop[0], pop[mm[MAXIMUM^1]], float*);
+    swap(pop[0], pop[mm[1]], float*);
 	memcpy(ret, pop[0], ga->size * sizeof(float));
 	free_ga(ga);
     return ret;

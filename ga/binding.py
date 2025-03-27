@@ -37,8 +37,6 @@ conf.tour_size = 5
 conf.mut_rate = 0.4
 conf.elitis = 0.1
 conf.gens = 30
-conf.find_max = 0
-conf.sel_alg = 0
 
 res = libgenetic.ga(conf, ga_callback)
 print(res[0], res[1])

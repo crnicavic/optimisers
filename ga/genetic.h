@@ -15,9 +15,6 @@
 #define len(arr) sizeof(arr)/sizeof(arr[0])
 
 #define _POSIX_C_SOURCE 200809L
-#define TRUE 1
-#define FALSE 0
-#define FAIL -1
 
 
 typedef enum selection
@@ -36,21 +33,16 @@ typedef struct gaconf{
     float mut_rate; /* probability of mutation from 0 to 1 */
     float elitis;   /* percentage of units to be taken into next gen*/ 
     int gens;       /* generation count */
-    const int find_max;   /* 0 if looking for maximum */
-    int sel_alg;    /* selection algorithm */
 }gaconf;
 
 static void generate_initial_pop(float *ranges);
 static void calculate_costs(float(*f)(float*));
-static int greater(float a, float b);
-static int lesser(float a, float b);
 static int partition(int start, int stop);
 static int find_kth(int start, int stop, int k);
 static int* max_min(float *arr);
-static void prob_max(int* max_min);
 static void prob_min(int* max_min);
 static inline int spin();
-static void roulette(int find_max);
+static void roulette();
 static int tournament(int participant_count); 
 static void brackets(int participant_count);
 static void crossover_sym();
