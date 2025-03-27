@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <float.h>
+#include <string.h>
 
 #define MALLOC_FAIL(str) "%s allocation failed!\n", #str
 

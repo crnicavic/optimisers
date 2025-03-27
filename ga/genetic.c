@@ -455,7 +455,6 @@ ga_init(gaconf *ga)
 
 }
 
-/*
 static void
 free_ga(gaconf *ga)
 {
@@ -464,11 +463,10 @@ free_ga(gaconf *ga)
     free(probs);
     free(participants);
     
-    FREE_MATRIX(new_pop, SIZE, 0);
-    FREE_MATRIX(pop, SIZE, 1);
-    FREE_MATRIX(pairs, SIZE/2, 0);
+	free(pop);
+	free(new_pop);
+	free(pairs);
 }
-*/
 
 float*
 ga(gaconf* ga, float (*func)(float*))
@@ -477,7 +475,7 @@ ga(gaconf* ga, float (*func)(float*))
     ga = ga == NULL ? &def : ga;
     int sel_parameter = ga->sel_alg == ROULETTE ? ga->find_max : ga->tour_size;
     int *mm;
-    float* ret;
+    float* ret = malloc(ga->size * sizeof(float));
 	int n = 20;
 	int arr[n];
 
@@ -505,7 +503,7 @@ ga(gaconf* ga, float (*func)(float*))
         swap(costs, new_costs, float*);
     }
     mm = max_min(costs);
-	printf("%ld\n", len(pop));
     swap(pop[0], pop[mm[MAXIMUM^1]], float*);
-    return pop[0];
+	memcpy(ret, pop[0], ga->size * sizeof(float));
+    return ret;
 }
