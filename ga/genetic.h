@@ -9,26 +9,6 @@
                                 fprintf(stderr, __VA_ARGS__); \
                                 return f; \
                             }
-/* v- variable(name) s-size t-type */
-#define ALLOC_ARRAY(v, s, t) v = (t*) malloc(sizeof(t) * s); \
-                        ASSERT(v != NULL, FAIL, MALLOC_FAIL(v))
-
-/* v- variable(name) r-rows c-cols t-type */
-#define ALLOC_MATRIX(v, r, c, t) do { int rr = 0;    \
-                            v = (t**) malloc(sizeof(t*) * r); \
-                            ASSERT(v != NULL, FAIL, MALLOC_FAIL(v)); \
-                            for(;rr < r; ++rr) { \
-                            v[rr] = (t*) malloc(sizeof(t) * c); \
-                            ASSERT(v[rr] != NULL, FAIL, MALLOC_FAIL(v)); } \
-                            } while(0);
-
-/* v-variable r-rows s-row to start from */
-#define FREE_MATRIX(v, r, s) do { int rr = s; \
-                                for(; rr < r; rr++) { \
-                                    free(v[rr]); \
-                                } \
-                                if(!s) { free(v); } } while(0);
-
 #define swap(x, y, T) do {T swap = x; x = y; y = swap;} while(0);
 
 #define len(arr) sizeof(arr)/sizeof(arr[0])
@@ -75,6 +55,7 @@ static void brackets(int participant_count);
 static void crossover_sym();
 static void mutation(float mut_rate);
 static void elitism(int elitis);
+static void** ndarr(int* shape, int dims, size_t element_size);
 static int ga_init(gaconf *ga);
 static void free_ga(gaconf *ga);
 float* ga(gaconf* ga, float (*func)(float*));

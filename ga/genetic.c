@@ -35,6 +35,7 @@ static void brackets(int participant_count);
 static void crossover_sym();
 static void mutation(float mut_rate);
 static void elitism(int elitis);
+static void** ndarr(int* shape, int dims, size_t element_size);
 static int ga_init(gaconf *ga);
 static void free_ga(gaconf *ga);
 float* ga(gaconf* ga, float (*func)(float*));
@@ -342,6 +343,71 @@ elitism(int elitis)
     }
 }
 
+
+void** ndarr
+(int* shape, int dims, size_t element_size)
+{
+	int i = 0;
+	int k = 0;
+	size_t total_elements = shape[0];
+	size_t total_pointers = shape[dims-2];
+	size_t total_length = 0;
+	size_t total_size = 0;
+	size_t level_size = 0;
+
+	for(i = 1; i < dims; i++) {
+		total_elements *= shape[i];
+	}
+	
+	for(i = dims-3; i >= 0; i--) {
+		total_pointers *= shape[i];
+		total_pointers += shape[i];
+	}
+	
+	total_size = total_elements * element_size + total_pointers * sizeof(void**);
+	void** base_ptr = (void**) malloc(total_size);
+	if (base_ptr == NULL)
+	{
+		printf("memory alloc failed!");
+		exit(1);
+	}
+
+	void **base_data = base_ptr + total_pointers;
+	
+	void *data_iterator = base_data;
+	i = total_pointers - 1;
+
+	level_size = total_elements / shape[dims-1];
+	k = total_pointers - level_size;
+	int loop_counter = 0; /* debugging purposes, will be removed */
+	/* set in-data pointers */
+	while(k < total_pointers) {
+		base_ptr[k] = data_iterator;
+		loop_counter++;
+		k++;
+		data_iterator += element_size * shape[dims-1];
+	}
+
+	int start;
+	int end = total_pointers;
+	void *pointer_iterator;
+	for(i = dims - 3; i >= 0; --i) {
+		end -= level_size;
+		level_size = level_size / shape[i+1];
+		start = end - level_size; 
+		pointer_iterator = base_ptr + end;
+		k = start;
+		printf("start: %d\n", start);
+		for(k = start; k < end; k++)
+		{
+			base_ptr[k] = pointer_iterator;
+			pointer_iterator += shape[i+1] * sizeof(void*);
+		}
+	}
+	return base_ptr;
+}
+
+
 /* dumb function that calls a bunch of mallocs */
 static int
 ga_init(gaconf *ga)
@@ -352,10 +418,13 @@ ga_init(gaconf *ga)
     SIZE = ga->size;
     DIMS = ga->dims;
     MAXIMUM = ga->find_max;
+	int pop_shape[2] = {SIZE, DIMS};
+	int pairs_shape[2] = {SIZE/2, 2};
+	
 
-    ALLOC_MATRIX(pop, SIZE, DIMS, float);
-    ALLOC_MATRIX(pairs, SIZE/2, 2, int);
-    ALLOC_MATRIX(new_pop, SIZE, DIMS, float);
+	pop = (float**) ndarr(pop_shape, 2, sizeof(float)); 
+	new_pop = (float**) ndarr(pop_shape, 2, sizeof(float));
+	pairs = (int**) ndarr(pairs_shape, 2, sizeof(int));
     
     if (ga->ranges == NULL || len(ga->ranges) != DIMS * 2) {
         min = -10;
@@ -365,26 +434,28 @@ ga_init(gaconf *ga)
             max = ga->ranges[1];
         }
 
-        ALLOC_ARRAY(ga->ranges, DIMS * 2, float);
+		int ranges_shape = DIMS * 2;
+		ga->ranges = (float*) ndarr(&ranges_shape, 1, sizeof(float));
         it = 0;
         for (; it < DIMS; it++){
             ga->ranges[it * 2] = min;
             ga->ranges[it * 2 + 1] = max;
         }
     }
-    ALLOC_ARRAY(costs, SIZE, float);
-    ALLOC_ARRAY(new_costs, SIZE, float);
-    
+
+	costs = (float*) ndarr(&ga->size, 1, sizeof(float));
+	new_costs = (float*) ndarr(&ga->size, 1, sizeof(float));
+
     if (ga->sel_alg == ROULETTE) {
-        ALLOC_ARRAY(probs, SIZE, float);
+		probs = (float*) ndarr(&ga->size, 1, sizeof(float));
     } else {
-        ALLOC_ARRAY(participants, ga->tour_size, int);
+		participants = (int*) ndarr(&ga->tour_size, 1, sizeof(int));
     }
     return 0;
 
 }
 
-
+/*
 static void
 free_ga(gaconf *ga)
 {
@@ -397,7 +468,7 @@ free_ga(gaconf *ga)
     FREE_MATRIX(pop, SIZE, 1);
     FREE_MATRIX(pairs, SIZE/2, 0);
 }
-
+*/
 
 float*
 ga(gaconf* ga, float (*func)(float*))
