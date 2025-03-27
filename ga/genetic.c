@@ -505,5 +505,6 @@ ga(gaconf* ga, float (*func)(float*))
     mm = max_min(costs);
     swap(pop[0], pop[mm[MAXIMUM^1]], float*);
 	memcpy(ret, pop[0], ga->size * sizeof(float));
+	free_ga(ga);
     return ret;
 }
