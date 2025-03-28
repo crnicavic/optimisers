@@ -37,8 +37,9 @@ float* ga(gaconf* ga, float (*func)(float*));
 
 static int DIMS;
 static int SIZE;
-static int MAXIMUM;
 
+/* an array that contains all the indicies */
+static int *idx;
 static float **pop;
 static float *costs;
 static float **new_pop;
@@ -75,97 +76,6 @@ calculate_costs(float(*f)(float*))
 }
 
 
-static int
-partition(int start, int stop)
-{
-    int pivot = start;
-    int it = start;
-    for (; it < stop; it++) {
-        if (new_costs[stop] > new_costs[it]) {
-            swap(new_costs[it], new_costs[pivot], float); 
-            swap(new_pop[it], new_pop[pivot], float*);
-            pivot++;
-        }
-    }
-    
-    swap(new_costs[stop], new_costs[pivot], float); 
-    swap(new_pop[stop], new_pop[pivot], float*);
-
-    return pivot;
-}
-
-static int 
-find_kth(int start, int stop, int k)
-{
-    if (start >= stop) {
-        return new_costs[k];
-    }
-
-    int pivot = drand48() * (stop-start) + start;
-    static int pos;
-    static int lsize;
-
-    swap(new_costs[stop], new_costs[pivot], float);
-    swap(new_pop[stop], new_pop[pivot], float*);
-
-    pos = partition(start, stop);
-    lsize = pos - start + 1;
-
-    if (lsize == k) {
-        return pos;
-    } else if (pos > k) {
-        return find_kth(start, pos-1, k);
-    } else {
-        return find_kth(pos+1, stop, k-lsize);
-    }
-
-}
-
-/* finds both the max and the min */
-static int* 
-max_min(float *arr)
-{
-    int it = 2;
-    static int ret[2] = {0, 0};
-    static int min, max;
-    if (arr[0] > arr[1]) {
-        min = 1;
-        max = 0;
-    } else {
-        min = 0;
-        max = 1;
-    }
-
-    while (it < SIZE-1) {
-        if (arr[it] > arr[it+1]) {
-            max = arr[max] < arr[it] ? it : max;
-            it++;
-            min = arr[min] > arr[it] ? it : min;
-        } else {
-            min = arr[min] > arr[it] ? it : min;
-            it++;
-            max = arr[max] < arr[it] ? it : max;
-        }
-        it++;
-    }
-    ret[0] = max; 
-    ret[1] = min;
-    return ret;
-}
-
-
-static void
-prob_min(int* max_min)
-{
-    int chr=0;
-    float range = costs[max_min[0]] - costs[max_min[1]];
-    float min = costs[max_min[1]];
-    for (; chr < SIZE; chr++) {
-        probs[chr] = 1 - (costs[chr] - min) / range;    
-    }
-}
-
-
 static inline int
 spin()
 {
@@ -186,10 +96,15 @@ roulette()
 {
     int chr = 0, crd = 0;
     int pair = 0;
-    int *r = max_min(costs); 
+	int it = 0;
+	float sum_probs = 0;
 
-    prob_min(r);
+	for(; it < SIZE; it++) sum_probs += costs[it];
+	
+	it = 0;
+	for(; it < SIZE; it++) probs[it] = costs[it] / sum_probs;
 
+	it = 0;
     for (; pair < SIZE/2; pair++) {
         crd = 0;
         for (; crd < 2; crd++) {
@@ -219,7 +134,7 @@ crossover_sym()
 
         for (; crd < DIMS; crd++) {
             new_pop[chr][crd] = (1-r) * pop[pairs[pair][0]][crd]; 
-            new_pop[chr][crd] =+ r * pop[pairs[pair][1]][crd];
+            new_pop[chr][crd] += r * pop[pairs[pair][1]][crd];
         }
 
         chr++;
@@ -243,31 +158,18 @@ mutation(float mut_rate)
 }
 
 
-static void 
+/* qsort callback */
+static int
+compare_costs(const void* a, const void* b)
+{
+	return costs[*(int*)a] - costs[*(int*)b];
+}
+
+
+static inline void 
 elitism(int elitis)
 {
-    int it = 0;
-   
-    swap(pop, new_pop, float**);
-    swap(costs, new_costs, float*);
-
-    /* looks for elitis best */
-    find_kth(0, SIZE-1, elitis); 
-
-    MAXIMUM = MAXIMUM ^ 1;
-    
-    /*looks for elitis worst */
-    find_kth(0, SIZE-1, elitis);
-    
-    MAXIMUM = MAXIMUM ^ 1;
-
-    swap(pop, new_pop, float**);
-    swap(costs, new_costs, float*);
-    
-    for(; it < elitis; it++) {
-        swap(costs[it], new_costs[it], float);
-        swap(pop[it], new_pop[it], float*);
-    }
+	qsort(idx, SIZE, sizeof(int), compare_costs);
 }
 
 
@@ -278,7 +180,6 @@ static void** ndarr
 	int k = 0;
 	size_t total_elements = shape[0];
 	size_t total_pointers = shape[dims-2];
-	size_t total_length = 0;
 	size_t total_size = 0;
 	size_t level_size = 0;
 
@@ -302,15 +203,12 @@ static void** ndarr
 	void **base_data = base_ptr + total_pointers;
 	
 	void *data_iterator = base_data;
-	i = total_pointers - 1;
 
 	level_size = total_elements / shape[dims-1];
 	k = total_pointers - level_size;
-	int loop_counter = 0; /* debugging purposes, will be removed */
 	/* set in-data pointers */
 	while(k < total_pointers) {
 		base_ptr[k] = data_iterator;
-		loop_counter++;
 		k++;
 		data_iterator += element_size * shape[dims-1];
 	}
@@ -324,7 +222,6 @@ static void** ndarr
 		start = end - level_size; 
 		pointer_iterator = base_ptr + end;
 		k = start;
-		printf("start: %d\n", start);
 		for(k = start; k < end; k++)
 		{
 			base_ptr[k] = pointer_iterator;
@@ -347,7 +244,6 @@ ga_init(gaconf *ga)
 	int pop_shape[2] = {SIZE, DIMS};
 	int pairs_shape[2] = {SIZE/2, 2};
 	
-
 	pop = (float**) ndarr(pop_shape, 2, sizeof(float)); 
 	new_pop = (float**) ndarr(pop_shape, 2, sizeof(float));
 	pairs = (int**) ndarr(pairs_shape, 2, sizeof(int));
@@ -373,6 +269,10 @@ ga_init(gaconf *ga)
 	new_costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 
 	probs = (float*) ndarr(&ga->size, 1, sizeof(float));
+	
+	idx = (int*) ndarr(&ga->size, 1, sizeof(int));
+	for (int i = 0; i < SIZE; i++) idx[i] = i;
+
     return 0;
 
 }
@@ -394,10 +294,8 @@ float*
 ga(gaconf* ga, float (*func)(float*))
 {
     float prev_best = FLT_MAX;
-    int *mm;
     float* ret = malloc(ga->size * sizeof(float));
 	int n = 20;
-	int arr[n];
 
     ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
     srand48(-time(NULL));
@@ -415,16 +313,12 @@ ga(gaconf* ga, float (*func)(float*))
         mutation(ga->mut_rate);
 
         calculate_costs(func);
-        elitism(ga->elitis * SIZE);
+        //elitism(ga->elitis * SIZE);
         
-        calculate_costs(func); 
-
         swap(pop, new_pop, float**);
         swap(costs, new_costs, float*);
     }
-    mm = max_min(costs);
-    swap(pop[0], pop[mm[1]], float*);
-	memcpy(ret, pop[0], ga->size * sizeof(float));
+	memcpy(ret, pop[idx[0]], ga->size * sizeof(float));
 	free_ga(ga);
     return ret;
 }

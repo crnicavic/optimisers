@@ -14,6 +14,7 @@ mkShell {
 		gcc
 		gdb
 		lldb
+		valgrind
 		cmake
 		gnumake
 		];
