@@ -27,12 +27,10 @@ static int* max_min(float *arr);
 static void prob_min(int* max_min);
 static inline int spin();
 static void roulette();
-static int tournament(int participant_count); 
-static void brackets(int participant_count);
 static void crossover_sym();
 static void mutation(float mut_rate);
 static void elitism(int elitis);
-static void** ndarr(int* shape, int dims, size_t element_size);
+static void** ndarr(const int* shape, int dims, size_t element_size);
 static int ga_init(gaconf *ga);
 static void free_ga(gaconf *ga);
 float* ga(gaconf* ga, float (*func)(float*));
@@ -201,20 +199,6 @@ roulette()
 }
 
 
-static void
-brackets(int participant_count)
-{
-    int parent = 0;
-    int pair = 0;
-    for (; pair < SIZE/2; pair++) {
-        parent = 0;
-        for (; parent < 2; parent++) {
-            pairs[pair][parent] = tournament(participant_count);
-        }
-    }
-}
-
-
 /* symmetrical crossover */
 static void
 crossover_sym()
@@ -287,8 +271,8 @@ elitism(int elitis)
 }
 
 
-void** ndarr
-(int* shape, int dims, size_t element_size)
+static void** ndarr
+(const int* shape, int dims, size_t element_size)
 {
 	int i = 0;
 	int k = 0;
