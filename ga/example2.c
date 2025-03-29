@@ -1,17 +1,25 @@
 #include "genetic.h"
 
-#define DIMENSIONS 2
 
-float f2(float* x){
-        return (x[0]-2) * (x[0]-2) + x[1] * x[1];
+float f(float *x)
+{
+	return (x[0] - 2) * (x[0] - 2) + x[1] * x[1]; 
 }
 
-extern gaconf def;
+int main(void)
+{
+	gaconf conf;
+	float ranges[4] = {-10, 10, -10, 10};
+	conf.ranges = ranges;	
+	conf.dims = 2;
+	conf.size = 30;
+	conf.tour_size = 0;
+	conf.mut_rate = 0.25;
+	conf.elitis = 0.2;
+	conf.gens = 30;
 
-int main(){
-        float test[2][2] = {{-1.0, 3.0}, {-2.0, 3.0}};
-        gaconf conf = {NULL, 2, 30, 5, 0.3, 0.1, 30, FALSE, ROULETTE};
-        float* winner = ga(&conf, f2);
-        printf("Final: %.10f\n", f2(winner));
-        return 0;
+	float *ret = ga(&conf, f);
+	printf("%f, %f\n", ret[0], ret[1]);
+	printf("%f\n", f(ret));
+	return 0;
 }

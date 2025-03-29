@@ -27,9 +27,9 @@ typedef enum selection
 //TODO: all of these should be function pointers
 typedef struct gaconf{
     float *ranges; 
-    const int dims;       /* dimensions of the target function */
-    const int size;       /* population size */
-    const int tour_size;  /* the size of the n/2 tournament */
+    int dims;       /* dimensions of the target function */
+    int size;       /* population size */
+    int tour_size;  /* the size of the n/2 tournament */
     float mut_rate; /* probability of mutation from 0 to 1 */
     float elitis;   /* percentage of units to be taken into next gen*/ 
     int gens;       /* generation count */

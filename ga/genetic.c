@@ -53,15 +53,16 @@ static int **pairs;
 static void 
 generate_initial_pop(float *ranges)
 {
-    int chr = 0, crd = 0;
+    int chr = 0, dim = 0;
     float range, min; 
 
     for (; chr < SIZE; chr++){
-        crd = 0;
-        range = ranges[chr * 2 + 1] - ranges[chr * 2];
-        for (; crd < DIMS; crd++){
-            new_pop[chr][crd] = (drand48() * range) + ranges[chr*2];
-        }
+        dim = 0;
+        for (; dim < DIMS; dim++){
+			range = ranges[dim * 2 + 1] - ranges[dim * 2];
+			float a = (drand48() * range) + ranges[dim*2];
+            new_pop[chr][dim] = a;
+		}
     }
 }
 
@@ -156,28 +157,17 @@ max_min(float *arr)
 }
 
 
-static void
-prob_min(int* max_min)
-{
-    int chr=0;
-    float range = costs[max_min[0]] - costs[max_min[1]];
-    float min = costs[max_min[1]];
-    for (; chr < SIZE; chr++) {
-        probs[chr] = 1 - (costs[chr] - min) / range;    
-    }
-}
-
 
 static inline int
 spin()
 {
     float temp = drand48();
     float prob_sum = 0;
-    int parent = 0;
-    while(prob_sum < temp){
-        prob_sum += probs[parent]; 
+    int parent = -1;
+    do {
         parent++;
-    }
+        prob_sum += probs[parent]; 
+    } while(prob_sum < temp);
 
     return parent;
 }
@@ -188,31 +178,24 @@ roulette()
 {
     int chr = 0, crd = 0;
     int pair = 0;
-    int *r = max_min(costs); 
+	float sum_costs = 0, sum_probs = 0;
 
-    prob_min(r);
-
+	for (int it = 0; it < SIZE; it++) {
+		probs[it] = 1.0 / (costs[it] + 1e-6);
+		sum_costs += probs[it];
+	}
+	for (int it = 0; it < SIZE; it++) {
+		probs[it] /= sum_costs;
+	}
     for (; pair < SIZE/2; pair++) {
         crd = 0;
         for (; crd < 2; crd++) {
             pairs[pair][crd] = spin();
+			printf("%d, %d\n", pairs[pair][0], pairs[pair][1]);
         }
     }
 }
 
-
-static void
-brackets(int participant_count)
-{
-    int parent = 0;
-    int pair = 0;
-    for (; pair < SIZE/2; pair++) {
-        parent = 0;
-        for (; parent < 2; parent++) {
-            pairs[pair][parent] = tournament(participant_count);
-        }
-    }
-}
 
 
 /* symmetrical crossover */
@@ -225,20 +208,14 @@ crossover_sym()
     while (chr < SIZE) {
         r = (float) drand48();
 
+		crd = 0;
         for (; crd < DIMS; crd++) {
-            new_pop[chr][crd] = r * pop[pairs[pair][0]][crd];
-            new_pop[chr][crd] += (1-r) * pop[pairs[pair][1]][crd];
+			float p0 = pop[pairs[pair][0]][crd];
+			float p1 = pop[pairs[pair][1]][crd];
+            new_pop[chr][crd] = r * p0 + (1-r) * p1;
+            new_pop[chr][crd] = (1-r) * p0 + r * p1;
         }
-        
-        crd = 0;
-        chr++;
-
-        for (; crd < DIMS; crd++) {
-            new_pop[chr][crd] = (1-r) * pop[pairs[pair][0]][crd]; 
-            new_pop[chr][crd] =+ r * pop[pairs[pair][1]][crd];
-        }
-
-        chr++;
+        chr += 2;
         pair++;
     }
 }
@@ -340,7 +317,6 @@ void** ndarr
 		start = end - level_size; 
 		pointer_iterator = base_ptr + end;
 		k = start;
-		printf("start: %d\n", start);
 		for(k = start; k < end; k++)
 		{
 			base_ptr[k] = pointer_iterator;
@@ -368,23 +344,6 @@ ga_init(gaconf *ga)
 	new_pop = (float**) ndarr(pop_shape, 2, sizeof(float));
 	pairs = (int**) ndarr(pairs_shape, 2, sizeof(int));
     
-    if (ga->ranges == NULL || len(ga->ranges) != DIMS * 2) {
-        min = -10;
-        max = 10;
-        if (ga->ranges != NULL && len(ga->ranges) == 2) {
-            min = ga->ranges[0];
-            max = ga->ranges[1];
-        }
-
-		int ranges_shape = DIMS * 2;
-		ga->ranges = (float*) ndarr(&ranges_shape, 1, sizeof(float));
-        it = 0;
-        for (; it < DIMS; it++){
-            ga->ranges[it * 2] = min;
-            ga->ranges[it * 2 + 1] = max;
-        }
-    }
-
 	costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 	new_costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 
