@@ -34,8 +34,6 @@ float* ga(gaconf* ga, float (*func)(float*));
 static int DIMS;
 static int SIZE;
 
-/* an array that contains all the indicies */
-static int *idx;
 static float **pop;
 static float *costs;
 static float **new_pop;
@@ -43,6 +41,7 @@ static float *new_costs;
 static float *probs;
 static int *participants;
 static int **pairs;
+/* an array that contains all the indicies */
 static int *idx;
 
 
