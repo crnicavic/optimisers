@@ -36,10 +36,6 @@ typedef struct gaconf{
 
 static void generate_initial_pop(float *ranges);
 static void calculate_costs(float(*f)(float*));
-static int partition(int start, int stop);
-static int find_kth(int start, int stop, int k);
-static int* max_min(float *arr);
-static void prob_min(int* max_min);
 static inline int spin();
 static void roulette();
 static void crossover_sym();
