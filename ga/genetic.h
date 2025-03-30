@@ -29,7 +29,6 @@ typedef struct gaconf{
     float *ranges; 
     int dims;       /* dimensions of the target function */
     int size;       /* population size */
-    int tour_size;  /* the size of the n/2 tournament */
     float mut_rate; /* probability of mutation from 0 to 1 */
     float elitis;   /* percentage of units to be taken into next gen*/ 
     int gens;       /* generation count */

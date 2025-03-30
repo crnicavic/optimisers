@@ -48,6 +48,7 @@ static float *new_costs;
 static float *probs;
 static int *participants;
 static int **pairs;
+static int *idx;
 
 
 static void 
@@ -76,86 +77,6 @@ calculate_costs(float(*f)(float*))
         new_costs[it] = f(new_pop[it]);
     }
 }
-
-
-static int
-partition(int start, int stop)
-{
-    int pivot = start;
-    int it = start;
-    for (; it < stop; it++) {
-        if (new_costs[stop] > new_costs[it]) {
-            swap(new_costs[it], new_costs[pivot], float); 
-            swap(new_pop[it], new_pop[pivot], float*);
-            pivot++;
-        }
-    }
-    
-    swap(new_costs[stop], new_costs[pivot], float); 
-    swap(new_pop[stop], new_pop[pivot], float*);
-
-    return pivot;
-}
-
-static int 
-find_kth(int start, int stop, int k)
-{
-    if (start >= stop) {
-        return new_costs[k];
-    }
-
-    int pivot = drand48() * (stop-start) + start;
-    static int pos;
-    static int lsize;
-
-    swap(new_costs[stop], new_costs[pivot], float);
-    swap(new_pop[stop], new_pop[pivot], float*);
-
-    pos = partition(start, stop);
-    lsize = pos - start + 1;
-
-    if (lsize == k) {
-        return pos;
-    } else if (pos > k) {
-        return find_kth(start, pos-1, k);
-    } else {
-        return find_kth(pos+1, stop, k-lsize);
-    }
-
-}
-
-/* finds both the max and the min */
-static int* 
-max_min(float *arr)
-{
-    int it = 2;
-    static int ret[2] = {0, 0};
-    static int min, max;
-    if (arr[0] > arr[1]) {
-        min = 1;
-        max = 0;
-    } else {
-        min = 0;
-        max = 1;
-    }
-
-    while (it < SIZE-1) {
-        if (arr[it] > arr[it+1]) {
-            max = arr[max] < arr[it] ? it : max;
-            it++;
-            min = arr[min] > arr[it] ? it : min;
-        } else {
-            min = arr[min] > arr[it] ? it : min;
-            it++;
-            max = arr[max] < arr[it] ? it : max;
-        }
-        it++;
-    }
-    ret[0] = max; 
-    ret[1] = min;
-    return ret;
-}
-
 
 
 static inline int
@@ -191,29 +112,27 @@ roulette()
         crd = 0;
         for (; crd < 2; crd++) {
             pairs[pair][crd] = spin();
-			printf("%d, %d\n", pairs[pair][0], pairs[pair][1]);
         }
     }
 }
-
 
 
 /* symmetrical crossover */
 static void
 crossover_sym()
 {
-    int chr = 0, crd = 0, pair = 0;
+    int chr = 0, dim = 0, pair = 0;
     float r;
 
     while (chr < SIZE) {
         r = (float) drand48();
 
-		crd = 0;
-        for (; crd < DIMS; crd++) {
-			float p0 = pop[pairs[pair][0]][crd];
-			float p1 = pop[pairs[pair][1]][crd];
-            new_pop[chr][crd] = r * p0 + (1-r) * p1;
-            new_pop[chr][crd] = (1-r) * p0 + r * p1;
+		dim = 0;
+        for (; dim < DIMS; dim++) {
+			float p0 = pop[pairs[pair][0]][dim];
+			float p1 = pop[pairs[pair][1]][dim];
+            new_pop[chr][dim] = r * p0 + (1-r) * p1;
+            new_pop[chr+1][dim] = (1-r) * p0 + r * p1;
         }
         chr += 2;
         pair++;
@@ -225,14 +144,22 @@ static void
 mutation(float mut_rate)
 {
     float r;
-    int chr = 0, crd = 0;
+    int chr = 0, dim = 0;
     for (; chr < SIZE; chr++) {
-        crd = 0;
-        for (; crd < DIMS; crd++) {  
+        dim = 0;
+        for (; dim < DIMS; dim++) {  
             r = drand48() < mut_rate ? (drand48() * 2) - 1 : 0;
-            new_pop[chr][crd] += r;
+            new_pop[chr][dim] += r;
         }
     }
+}
+
+
+static int
+cmp_costs(const void *a, const void *b) {
+    float diff = costs[*(int*)a] - costs[*(int*)b];  
+	/* has to be done like this because cmp_costs expects an integer */
+	return (diff > 0) - (diff < 0);
 }
 
 
@@ -241,25 +168,11 @@ elitism(int elitis)
 {
     int it = 0;
    
-    swap(pop, new_pop, float**);
-    swap(costs, new_costs, float*);
+	qsort(idx, SIZE, sizeof(int), cmp_costs);
 
-    /* looks for elitis best */
-    find_kth(0, SIZE-1, elitis); 
-
-    MAXIMUM = MAXIMUM ^ 1;
-    
-    /*looks for elitis worst */
-    find_kth(0, SIZE-1, elitis);
-    
-    MAXIMUM = MAXIMUM ^ 1;
-
-    swap(pop, new_pop, float**);
-    swap(costs, new_costs, float*);
-    
     for(; it < elitis; it++) {
-        swap(costs[it], new_costs[it], float);
-        swap(pop[it], new_pop[it], float*);
+        swap(costs[idx[it]], new_costs[it], float);
+        swap(pop[idx[it]], new_pop[it], float*);
     }
 }
 
@@ -271,7 +184,6 @@ void** ndarr
 	int k = 0;
 	size_t total_elements = shape[0];
 	size_t total_pointers = shape[dims-2];
-	size_t total_length = 0;
 	size_t total_size = 0;
 	size_t level_size = 0;
 
@@ -295,15 +207,12 @@ void** ndarr
 	void **base_data = base_ptr + total_pointers;
 	
 	void *data_iterator = base_data;
-	i = total_pointers - 1;
 
 	level_size = total_elements / shape[dims-1];
 	k = total_pointers - level_size;
-	int loop_counter = 0; /* debugging purposes, will be removed */
 	/* set in-data pointers */
 	while(k < total_pointers) {
 		base_ptr[k] = data_iterator;
-		loop_counter++;
 		k++;
 		data_iterator += element_size * shape[dims-1];
 	}
@@ -347,6 +256,9 @@ ga_init(gaconf *ga)
 	costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 	new_costs = (float*) ndarr(&ga->size, 1, sizeof(float));
 
+	idx = (int*) ndarr(&ga->size, 1, sizeof(int));
+	for (int i = 0; i < SIZE; i++) idx[i] = i;
+
 	probs = (float*) ndarr(&ga->size, 1, sizeof(float));
     return 0;
 
@@ -368,11 +280,7 @@ free_ga(gaconf *ga)
 float*
 ga(gaconf* ga, float (*func)(float*))
 {
-    float prev_best = FLT_MAX;
-    int *mm;
-    float* ret = malloc(ga->size * sizeof(float));
-	int n = 20;
-	int arr[n];
+    float* ret = malloc(ga->dims * sizeof(float));
 
     ASSERT(ga_init(ga) >= 0, NULL,"ga_init fail!\n") 
     srand48(-time(NULL));
@@ -380,26 +288,20 @@ ga(gaconf* ga, float (*func)(float*))
     generate_initial_pop(ga->ranges);
     calculate_costs(func);
 
-    swap(pop, new_pop, float**);
-    swap(costs, new_costs, float*);
-    
     for (int it = 0; it < ga->gens; it++) {
-        
+        swap(pop, new_pop, float**);
+        swap(costs, new_costs, float*);
+
 		roulette();
         crossover_sym();
         mutation(ga->mut_rate);
 
-        calculate_costs(func);
         elitism(ga->elitis * SIZE);
         
         calculate_costs(func); 
-
-        swap(pop, new_pop, float**);
-        swap(costs, new_costs, float*);
     }
-    mm = max_min(costs);
-    swap(pop[0], pop[mm[1]], float*);
-	memcpy(ret, pop[0], ga->size * sizeof(float));
+	memcpy(ret, pop[idx[0]], ga->dims * sizeof(float));
 	free_ga(ga);
     return ret;
 }
+
